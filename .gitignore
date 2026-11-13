@@ -1,0 +1,30 @@
+# 개인 AI 설정 (각자 로컬에만)
+CLAUDE.local.md
+AGENTS.override.md
+.claude/settings.local.json
+.claude/worktrees/
+
+# 비밀값 (API 키 등)
+.env
+.env.*
+
+# 큰 미디어 · 개인 자료
+*.pdf
+*.mp4
+*.mov
+*.zip
+
+# 개인 메모
+*.local.md
+memo/
+notes/
+
+# 도구가 만드는 파일
+node_modules/
+.vercel/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
