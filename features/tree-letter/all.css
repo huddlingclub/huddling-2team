@@ -1,0 +1,323 @@
+/* 모두의 트리 — Figma '전체 조 트리 모아보기 (1920w)' 기준 */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #150402;
+  color: #fafaf9;
+  font-family: 'Wanted Sans Variable', 'Wanted Sans', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
+    'Noto Sans KR', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+.stage-wrap {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  /* 화면 비율이 16:9가 아닐 때 남는 자리도 같은 색으로 채워요. */
+  background: linear-gradient(180deg, #150402 0%, #3e0f0b 40%, #4a120d 75%, #2a0b08 100%);
+}
+
+.stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  /* 가운데에 놓고 화면에 맞게 줄이거나 키워요. */
+  transform: translate(-50%, -50%) scale(var(--scale, 1));
+  transform-origin: center;
+  background: linear-gradient(180deg, #150402 0%, #3e0f0b 40%, #4a120d 75%, #2a0b08 100%);
+}
+
+/* 위 · 아래 어두운 그라데이션 */
+.stage::before,
+.stage::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.stage::before {
+  top: 0;
+  height: 300px;
+  background: linear-gradient(180deg, rgba(21, 4, 2, 0.9) 0%, rgba(21, 4, 2, 0) 100%);
+}
+
+.stage::after {
+  bottom: 0;
+  height: 120px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%);
+  z-index: 3;
+}
+
+.glow {
+  position: absolute;
+  left: 10px;
+  top: 60px;
+  width: 1900px;
+  height: 1000px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(232, 181, 84, 0.22) 0%, rgba(232, 181, 84, 0.06) 55%, rgba(232, 181, 84, 0) 100%);
+}
+
+/* 전구 줄 */
+.lights {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 110px;
+  z-index: 1;
+}
+
+.bulb {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: #fedf89;
+  box-shadow: 0 0 18px 8px rgba(253, 176, 34, 0.45);
+  animation: twinkle 3.6s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* 제목 */
+.head {
+  position: absolute;
+  top: 56px;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.sub {
+  margin: 0;
+  color: #d7d3d0;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.title {
+  margin: 0;
+  font-family: 'Pinyon Script', cursive;
+  font-size: 84px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.chip {
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 트리 두 줄 */
+.rows {
+  position: absolute;
+  top: 300px;
+  left: 74px;
+  width: 1772px;
+  z-index: 2;
+  display: grid;
+  gap: 26px;
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(8, 204px);
+  gap: 20px;
+}
+
+/* 선반 */
+.row::before {
+  content: '';
+  position: absolute;
+  left: -74px;
+  width: 1920px;
+  top: 282px;
+  height: 64px;
+  background: linear-gradient(180deg, #8a5630 0%, #5c3519 18%, #3a1d0e 100%);
+  border-top: 3px solid rgba(197, 139, 85, 0.7);
+  box-shadow: 0 30px 40px -10px rgba(0, 0, 0, 0.45);
+}
+
+.cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+
+.cell:hover,
+.cell:focus-visible {
+  transform: translateY(-6px);
+  outline: none;
+}
+
+.cell:focus-visible .label {
+  box-shadow: 0 0 0 2px #e8b554;
+}
+
+.tree-box {
+  position: relative;
+  width: 204px;
+  height: 300px;
+}
+
+/* 트리 뒤 금빛 · 밑동 그림자 */
+.tree-box::before,
+.tree-box::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+
+.tree-box::before {
+  top: 30px;
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(closest-side, rgba(253, 176, 34, 0.2) 0%, rgba(253, 176, 34, 0) 100%);
+}
+
+.tree-box::after {
+  top: 276px;
+  width: 170px;
+  height: 30px;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+/* 조별 트리 화면과 같은 비율(307:462)의 상자. 오너먼트 위치(%)를 그대로 써요. */
+.tree {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  z-index: 1;
+  width: 193px;
+  height: 290px;
+  transform: translateX(-50%);
+}
+
+.tree > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.orn {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+  transition: left 0.25s ease, top 0.25s ease;
+}
+
+/* 새로 달린 오너먼트만 톡 튀어나오게 해요 (처음 불러온 것은 바로 보여줘요). */
+.orn.is-new {
+  animation: pop 0.25s ease-out;
+}
+
+.orn.is-live {
+  transition: none;
+}
+
+.orn img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+}
+
+.label {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(32, 12, 12, 0.85);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.label .count {
+  color: #a9a29d;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.label.is-bump {
+  animation: bump 0.35s ease;
+}
+
+@keyframes bump {
+  40% {
+    transform: scale(1.12);
+    border-color: #e8b554;
+  }
+}
+
+.foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 26px;
+  z-index: 4;
+  margin: 0;
+  color: rgba(215, 211, 208, 0.8);
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
