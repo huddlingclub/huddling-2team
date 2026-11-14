@@ -21,6 +21,8 @@
     { id: 'ball', label: '빨간 볼' },
     { id: 'penguin-santa', label: '산타 펭귄' },
     { id: 'penguin-bow', label: '리본 펭귄' },
+    { id: 'claude', label: '산타 클로드' },
+    { id: 'candy', label: '지팡이 사탕' },
   ];
   const ornSrc = (id) => `./img/orn-${id}.png`;
   const ORN_MAP = Object.fromEntries(ORNAMENTS.map((o) => [o.id, o]));
@@ -164,7 +166,10 @@
     const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (document.startViewTransition && !reduce) document.startViewTransition(swap);
     else swap();
-    if (name === 'decorate') connect();
+    if (name === 'decorate') {
+      connect();
+      requestAnimationFrame(updateScrollHint);
+    }
     if (name === 'nick') {
       const input = $('#nickInput');
       input.value = nick;
@@ -338,6 +343,15 @@
         <img src="${ornSrc(o.id)}" alt="" draggable="false" />
       </button>`
     ).join('');
+    updateScrollHint();
+  }
+
+  // 오른쪽에 더 있을 때만 어두운 가림막을 보여줘요.
+  function updateScrollHint() {
+    const list = $('#items');
+    const atEnd = list.scrollLeft + list.clientWidth >= list.scrollWidth - 4;
+    $('#itemsWrap').classList.toggle('is-end', atEnd);
+    $('#itemsWrap').classList.toggle('is-start', list.scrollLeft <= 4);
   }
 
   /* ---------- 편지 ---------- */
@@ -505,6 +519,9 @@
     });
 
     bindDrag();
+
+    $('#items').addEventListener('scroll', updateScrollHint, { passive: true });
+    window.addEventListener('resize', updateScrollHint);
 
     $('#shareBtn').addEventListener('click', async () => {
       const url = `${location.origin}${location.pathname}?team=${team}`;
