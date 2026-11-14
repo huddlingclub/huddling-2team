@@ -1,0 +1,113 @@
+/* 트리 이미지 저장 (준비 단계 · 아직 index.html에 연결하지 않았어요)
+   연결 방법은 save-image.js 맨 위에 적어 두었어요. */
+
+/* 상단 바: 오른쪽에 버튼이 둘이 되어도 조 이름은 가운데에 있도록 */
+.bar--decorate {
+  position: absolute;
+}
+
+.bar--decorate .bar-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.bar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 저장 모달 */
+.save-dialog {
+  width: calc(100% - 40px);
+  max-width: 360px;
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  border: 1px solid var(--line-subtle);
+  border-radius: 20px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+.save-dialog::backdrop {
+  background: var(--bg-dim);
+}
+
+.save-dialog[open] {
+  animation: save-pop 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.save-dialog[open]::backdrop {
+  animation: save-fade 0.24s ease;
+}
+
+@keyframes save-pop {
+  from {
+    transform: translateY(16px) scale(0.97);
+    opacity: 0;
+  }
+}
+
+@keyframes save-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.save-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100dvh - 50px);
+  padding: 8px 16px 16px;
+}
+
+.save-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  margin-right: -8px;
+}
+
+.save-title {
+  margin: 0;
+  font-size: var(--fs-heading);
+  font-weight: var(--fw-strong);
+}
+
+.save-preview {
+  flex: 1;
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--bg-canvas);
+  overflow: hidden;
+}
+
+.save-img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100dvh - 220px);
+  object-fit: contain;
+}
+
+.save-status {
+  margin: 0;
+  padding: 0 16px;
+  color: var(--text-tertiary);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .save-dialog[open],
+  .save-dialog[open]::backdrop {
+    animation: none;
+  }
+}
