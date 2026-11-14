@@ -1011,3 +1011,69 @@ svg.lucide {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* ---------- 오너먼트 목록: 가로 스크롤 + 오른쪽에 더 있다는 표시 ---------- */
+.items-wrap {
+  position: relative;
+  margin: 0 calc(var(--gutter) * -1);
+}
+
+.items {
+  display: flex;
+  grid-template-columns: none;
+  gap: 8px;
+  padding: 2px var(--gutter);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--gutter);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.items::-webkit-scrollbar {
+  display: none;
+}
+
+.item {
+  flex: 0 0 60px;
+  width: 60px;
+  height: 60px;
+  aspect-ratio: auto;
+  scroll-snap-align: start;
+}
+
+/* 양 끝의 어두운 블러 가림막. 끝까지 넘기면 사라져요. */
+.items-wrap::before,
+.items-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 64px;
+  z-index: 1;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  transition: opacity 0.2s ease;
+}
+
+.items-wrap::after {
+  right: 0;
+  background: linear-gradient(90deg, rgba(28, 25, 23, 0) 0%, rgba(28, 25, 23, 0.82) 70%, #1c1917 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 55%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 55%);
+}
+
+.items-wrap::before {
+  left: 0;
+  background: linear-gradient(270deg, rgba(28, 25, 23, 0) 0%, rgba(28, 25, 23, 0.82) 70%, #1c1917 100%);
+  -webkit-mask-image: linear-gradient(270deg, transparent 0%, #000 55%);
+  mask-image: linear-gradient(270deg, transparent 0%, #000 55%);
+}
+
+.items-wrap.is-end::after,
+.items-wrap.is-start::before {
+  opacity: 0;
+}
