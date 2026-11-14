@@ -164,7 +164,8 @@
         el.hidden = el.dataset.screen !== name;
       });
     const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (document.startViewTransition && !reduce) document.startViewTransition(swap);
+    // 탭이 가려져 있으면 전환 효과가 멈출 수 있어서, 그때는 바로 바꿔요.
+    if (document.startViewTransition && !reduce && !document.hidden) document.startViewTransition(swap);
     else swap();
     if (name === 'decorate') {
       connect();
@@ -574,6 +575,7 @@
 
     $$('[data-tree]').forEach((el) => (el.innerHTML = treeImg(team)));
     $$('[data-team-label]').forEach((el) => (el.textContent = `${team}조`));
+    $$('[data-team-start]').forEach((el) => (el.textContent = `${team}조 트리 꾸미러 가기`));
     document.title = `${team}조 트리 · 허들링 트리`;
     bind();
     renderTitle();

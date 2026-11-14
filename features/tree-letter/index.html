@@ -9,6 +9,9 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.3/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css"
     />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pinyon+Script&display=swap" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
@@ -24,14 +27,16 @@
 
       <!-- ① 메인 -->
       <section class="screen" data-screen="home" hidden>
+        <svg class="spark spark--left" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 0v28M0 14h28M4.5 4.5l19 19M23.5 4.5l-19 19" /></svg>
+        <svg class="spark spark--right" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 0v28M0 14h28M4.5 4.5l19 19M23.5 4.5l-19 19" /></svg>
         <div class="head">
           <span class="chip" data-team-label></span>
-          <h1 class="title title--xl">허들링 트리</h1>
           <p class="sub">허들링 클럽 연말 크리스마스 트리 꾸미기</p>
+          <h1 class="title title--script">Merry<br />Huddling Tree</h1>
         </div>
         <div class="hero"></div>
         <div class="foot">
-          <button class="btn btn--primary" id="startBtn" type="button">시작하기</button>
+          <button class="btn btn--ghost" id="startBtn" type="button" data-team-start>트리 꾸미러 가기</button>
         </div>
       </section>
 
