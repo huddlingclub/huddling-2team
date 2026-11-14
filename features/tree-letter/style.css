@@ -1177,3 +1177,21 @@ svg.lucide {
   min-height: 0;
   gap: 6px;
 }
+
+/* ---------- ① 시작 화면 배경: Figma의 펭귄 트리 그림 + 위쪽 어두운 그라데이션 ---------- */
+[data-screen='home'] {
+  background: linear-gradient(180deg, #150402 0%, rgba(21, 4, 2, 0) 29%), #171412 url('./img/home.jpg') center / cover no-repeat;
+}
+
+.spark--right {
+  display: none;
+}
+
+.btn--ghost {
+  background: #e8b554;
+  color: #2b1208;
+}
+
+.btn--ghost:active {
+  background: #d9a441;
+}
