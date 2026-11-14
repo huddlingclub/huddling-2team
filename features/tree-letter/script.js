@@ -13,36 +13,22 @@
   const REMOTE_TTL_MS = 6000; // 다른 사람의 선택 표시가 사라지는 시간
   const SELECT_BEAT_MS = 2500;
 
+  // Figma 'deco' 컴포넌트의 이미지를 그대로 써요 (./img/orn-<id>.png).
   const ORNAMENTS = [
-    { id: 'ball', icon: 'sparkle', color: '#D8433B' },
-    { id: 'star', icon: 'star', color: '#E8B94A' },
-    { id: 'heart', icon: 'heart', color: '#E26D8A' },
-    { id: 'gift', icon: 'gift', color: '#3F7FBF' },
-    { id: 'bell', icon: 'bell', color: '#C98A2B' },
-    { id: 'snow', icon: 'snowflake', color: '#6FB6D9' },
-    { id: 'candy', icon: 'candy-cane', color: '#C2453F' },
-    { id: 'cookie', icon: 'cookie', color: '#9A6A3C' },
+    { id: 'snow', label: '눈꽃' },
+    { id: 'cookie', label: '진저맨 쿠키' },
+    { id: 'gift', label: '선물 상자' },
+    { id: 'ball', label: '빨간 볼' },
+    { id: 'penguin-santa', label: '산타 펭귄' },
+    { id: 'penguin-bow', label: '리본 펭귄' },
   ];
-  const BACKGROUNDS = [
-    { id: 'night', label: '밤하늘' },
-    { id: 'snow', label: '눈 오는 날' },
-    { id: 'warm', label: '따뜻한 방' },
-    { id: 'forest', label: '숲속' },
-  ];
+  const ornSrc = (id) => `./img/orn-${id}.png`;
   const ORN_MAP = Object.fromEntries(ORNAMENTS.map((o) => [o.id, o]));
   // 함께 편집하는 사람을 구분하는 색 (Figma 공동편집의 이름표 색처럼)
   const PEER_COLORS = ['#F97066', '#FDB022', '#47CD89', '#53B1FD', '#BDB4FE', '#F670C7', '#2ED3B7', '#FD853A'];
 
-  // 임시 트리 그래픽. 최종 일러스트가 나오면 이 부분만 바꾸면 돼요.
-  const TREE_SVG = `
-    <svg class="tree-svg" viewBox="0 0 300 360" aria-hidden="true">
-      <rect x="134" y="296" width="32" height="46" rx="6" fill="#7A5236"/>
-      <path d="M150 150 L262 300 H38 Z" fill="#1F5A41" stroke="#1F5A41" stroke-width="16" stroke-linejoin="round"/>
-      <path d="M150 90 L236 220 H64 Z" fill="#27704F" stroke="#27704F" stroke-width="16" stroke-linejoin="round"/>
-      <path d="M150 44 L210 140 H90 Z" fill="#2F8560" stroke="#2F8560" stroke-width="16" stroke-linejoin="round"/>
-      <polygon points="150,10 155,23.1 169,23.8 158.1,32.6 161.8,46.2 150,38.5 138.2,46.2 141.9,32.6 131,23.8 145,23.1"
-        fill="#E8B94A" stroke="#E8B94A" stroke-width="4" stroke-linejoin="round"/>
-    </svg>`;
+  // Figma 'tree' 컴포넌트 4종. 조마다 다른 트리가 보여요.
+  const treeImg = (n) => `<img class="tree-img" src="./img/tree-${((n - 1) % 4) + 1}.png" alt="" draggable="false" />`;
 
   /* ---------- 도우미 ---------- */
   const $ = (sel) => document.querySelector(sel);
@@ -102,8 +88,6 @@
 
   const ornaments = new Map(); // id -> { id, type, x, y, nick }
   let letters = [];
-  let bg = 'night';
-  let tab = 'ornament';
   let selectedId = null;
   let drag = null; // { id, moved, lastSent }
   const remote = new Map(); // 다른 사람 sid -> { id, nick, color, at }
@@ -132,9 +116,6 @@
         else if (p.new && p.new.team === team) upsertOrnament(p.new);
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tl_letters', filter }, (p) => addLetter(p.new))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tl_settings', filter }, (p) => {
-        if (p.new && p.new.bg) setBgLocal(p.new.bg);
-      })
       // 드래그 중인 위치 · 선택 표시는 DB에 저장하지 않고 바로 주고받아요.
       .on('broadcast', { event: 'move' }, ({ payload }) => onRemoteMove(payload))
       .on('broadcast', { event: 'select' }, ({ payload }) => onRemoteSelect(payload))
@@ -155,10 +136,9 @@
   }
 
   async function loadAll() {
-    const [o, l, s] = await Promise.all([
+    const [o, l] = await Promise.all([
       db.from('tl_ornaments').select('id,type,x,y,nick').eq('team', team).order('created_at'),
       db.from('tl_letters').select('id,nick,text,created_at').eq('team', team).order('created_at', { ascending: false }).limit(500),
-      db.from('tl_settings').select('bg').eq('team', team).maybeSingle(),
     ]);
     if (o.error || l.error) return toast('불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.');
     const keep = drag && ornaments.get(drag.id);
@@ -166,7 +146,6 @@
     for (const row of o.data) ornaments.set(row.id, row);
     if (keep) ornaments.set(keep.id, keep);
     letters = l.data;
-    if (s.data && s.data.bg) bg = s.data.bg;
     if (selectedId && !ornaments.has(selectedId)) selectedId = null;
     renderAll();
   }
@@ -176,10 +155,15 @@
   }
 
   /* ---------- 화면 전환 ---------- */
+  // 화면이 툭 바뀌지 않도록 부드럽게 겹쳐서 넘겨요 (지원하지 않는 브라우저는 CSS 등장 효과만 써요).
   function show(name) {
-    $$('[data-screen]').forEach((el) => {
-      el.hidden = el.dataset.screen !== name;
-    });
+    const swap = () =>
+      $$('[data-screen]').forEach((el) => {
+        el.hidden = el.dataset.screen !== name;
+      });
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (document.startViewTransition && !reduce) document.startViewTransition(swap);
+    else swap();
     if (name === 'decorate') connect();
     if (name === 'nick') {
       const input = $('#nickInput');
@@ -197,7 +181,6 @@
 
   /* ---------- 트리 · 오너먼트 ---------- */
   function renderAll() {
-    setBgLocal(bg);
     renderOrnaments();
     renderItems();
     renderLetters();
@@ -206,12 +189,6 @@
 
   function renderTitle() {
     $$('[data-team-title]').forEach((el) => (el.textContent = `${team}조 트리 · ${peerCount}명`));
-  }
-
-  function setBgLocal(next) {
-    bg = next;
-    $('#canvas').dataset.bg = bg;
-    if (tab === 'bg') renderItems();
   }
 
   // 요소를 지우고 다시 만들지 않고, id 기준으로 위치만 바꿔요 (드래그 중인 요소가 끊기지 않도록).
@@ -228,9 +205,8 @@
         el.type = 'button';
         el.className = 'orn';
         el.dataset.id = o.id;
-        el.style.setProperty('--c', def.color);
         el.setAttribute('aria-label', `${o.nick}님이 단 오너먼트`);
-        el.innerHTML = icon(def.icon);
+        el.innerHTML = `<img src="${ornSrc(def.id)}" alt="" draggable="false" />`;
         layer.appendChild(el);
       }
       el.style.left = `${o.x}%`;
@@ -332,19 +308,6 @@
     }
   }
 
-  async function setBackground(next) {
-    if (next === bg) return;
-    const prev = bg;
-    setBgLocal(next);
-    renderItems();
-    const { error } = await db.from('tl_settings').upsert({ team, bg: next });
-    if (error) {
-      setBgLocal(prev);
-      renderItems();
-      toast('배경을 바꾸지 못했어요.');
-    }
-  }
-
   /* ---------- 다른 사람의 편집 표시 ---------- */
   function onRemoteMove(p) {
     if (!p || p.sid === sid) return;
@@ -368,31 +331,13 @@
 
   /* ---------- 하단 목록 ---------- */
   function renderItems() {
-    const box = $('#items');
-    $$('.tab').forEach((t) => {
-      const on = t.dataset.tab === tab;
-      t.classList.toggle('is-on', on);
-      t.setAttribute('aria-selected', String(on));
-    });
-    if (tab === 'ornament') {
-      $('#sheetHint').textContent = '누르면 트리에 달려요. 끌어서 옮기고, X로 지워요.';
-      box.innerHTML = ORNAMENTS.map(
-        (o) => `
-        <button type="button" class="item" data-orn="${o.id}" aria-label="오너먼트 ${o.id} 달기">
-          <span class="dot" style="--c:${o.color}">${icon(o.icon)}</span>
-        </button>`
-      ).join('');
-    } else {
-      $('#sheetHint').textContent = '배경은 우리 조 모두에게 똑같이 보여요.';
-      box.innerHTML = BACKGROUNDS.map(
-        (b) => `
-        <button type="button" class="item item--bg${b.id === bg ? ' is-on' : ''}" data-bg="${b.id}"
-          aria-pressed="${b.id === bg}">
-          <span class="swatch" data-bg="${b.id}"></span>${b.label}
-        </button>`
-      ).join('');
-    }
-    refreshIcons();
+    $('#sheetHint').textContent = '누르면 트리에 달려요. 끌어서 옮기고, X로 지워요.';
+    $('#items').innerHTML = ORNAMENTS.map(
+      (o) => `
+      <button type="button" class="item" data-orn="${o.id}" aria-label="${o.label} 달기">
+        <img src="${ornSrc(o.id)}" alt="" draggable="false" />
+      </button>`
+    ).join('');
   }
 
   /* ---------- 편지 ---------- */
@@ -553,19 +498,10 @@
       show('decorate');
     });
 
-    $$('.tab').forEach((t) =>
-      t.addEventListener('click', () => {
-        tab = t.dataset.tab;
-        renderItems();
-      })
-    );
-
     $('#items').addEventListener('click', (e) => {
       if (!db) return;
       const orn = e.target.closest('[data-orn]');
-      const bgBtn = e.target.closest('[data-bg]');
       if (orn) addOrnament(orn.dataset.orn);
-      else if (bgBtn) setBackground(bgBtn.dataset.bg);
     });
 
     bindDrag();
@@ -609,7 +545,6 @@
 
   /* ---------- 시작 ---------- */
   function init() {
-    $$('[data-tree]').forEach((el) => (el.innerHTML = TREE_SVG));
     refreshIcons();
 
     if (!team) {
@@ -620,6 +555,7 @@
       return show('team');
     }
 
+    $$('[data-tree]').forEach((el) => (el.innerHTML = treeImg(team)));
     $$('[data-team-label]').forEach((el) => (el.textContent = `${team}조`));
     document.title = `${team}조 트리 · 허들링 트리`;
     bind();

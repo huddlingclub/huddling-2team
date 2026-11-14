@@ -843,3 +843,171 @@ svg.lucide {
 .card-nick {
   color: #fdb022;
 }
+
+
+/* ---------- Figma 그래픽 적용: 배경 · 그라데이션 · 트리 · 오너먼트 이미지 ---------- */
+/* ① 시작: Figma 시작 화면 그래픽을 화면 전체에 깔아요. */
+[data-screen='home'] {
+  background: #171412 url('./img/home.jpg') center / cover no-repeat;
+}
+
+[data-screen='home'] .head {
+  padding-top: 72px;
+}
+
+[data-screen='home'] .sub {
+  color: var(--text-secondary);
+}
+
+/* ② 닉네임: 방 배경 위에 어두운 막 (Figma: 검정 48%) */
+[data-screen='nick'],
+[data-screen='team'] {
+  background: linear-gradient(rgba(3, 3, 3, 0.48), rgba(3, 3, 3, 0.48)), #171412 url('./img/bg-room.jpg') center / cover no-repeat;
+}
+
+/* ③ 트리: 방 배경 + 아래로 갈수록 검어지는 그라데이션 (Figma: 아래 233/812 구간) */
+.canvas {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 71%, #000 100%), #171412 url('./img/bg-room.jpg') center / cover no-repeat;
+  padding: 84px 16px 30px;
+}
+
+.tree-box {
+  width: min(100cqw, calc(100cqh * 307 / 462));
+  aspect-ratio: 307 / 462;
+  cursor: default;
+}
+
+.tree-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.orn {
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.45));
+}
+
+.orn img,
+.item img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.orn-box {
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+}
+
+.items {
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  min-height: 0;
+}
+
+.item {
+  height: auto;
+  aspect-ratio: 1;
+  padding: 7px;
+  background: var(--bg-surface);
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.item:active {
+  transform: scale(0.92);
+  background: var(--line-subtle);
+}
+
+.sheet .hint {
+  margin-top: 0;
+}
+
+.sheet {
+  background: var(--bg-surface);
+}
+
+.item {
+  background: var(--bg-elevated);
+}
+
+/* ---------- 화면 전환을 부드럽게 ---------- */
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.screen:not([hidden]) {
+  animation: screen-in 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.3s;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* 화면 전환을 브라우저가 겹쳐서 처리할 때는 위 등장 효과를 끄고 겹침 효과만 써요. */
+@supports (view-transition-name: none) {
+  .screen:not([hidden]) {
+    animation: none;
+  }
+}
+
+.letters[open] {
+  animation: sheet-up 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.letters[open]::backdrop {
+  animation: fade-in 0.3s ease;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.card {
+  animation: fade-in 0.25s ease both;
+}
+
+.btn,
+.icon-btn {
+  transition: transform 0.12s ease, opacity 0.15s ease, background 0.15s ease;
+}
+
+.btn:active,
+.icon-btn:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
