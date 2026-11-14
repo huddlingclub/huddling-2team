@@ -1077,3 +1077,92 @@ svg.lucide {
 .items-wrap.is-start::before {
   opacity: 0;
 }
+
+/* ---------- 동시 편집 표시 색: 내가 고른 것은 초록, 다른 사람이 고른 것은 노랑 ---------- */
+.orn-box.is-mine {
+  border: 2px solid #47cd89;
+  box-shadow: 0 0 0 3px rgba(71, 205, 137, 0.25);
+}
+
+.orn-box.is-remote {
+  border: 2px solid #fdb022;
+  box-shadow: 0 0 0 3px rgba(253, 176, 34, 0.25);
+}
+
+.orn-tag {
+  background: #fdb022;
+}
+
+
+/* ---------- ① 시작 화면: Figma '① 시작 (조별 링크로 접속)' 기준 ---------- */
+[data-screen='home'] {
+  position: relative;
+  background: var(--bg-canvas);
+}
+
+[data-screen='home'] .head {
+  padding-top: 120px;
+}
+
+[data-screen='home'] .chip {
+  padding: 4px 12px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+[data-screen='home'] .sub {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.title--script {
+  margin-top: 6px;
+  font-family: 'Pinyon Script', 'Wanted Sans Variable', cursive;
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0;
+  color: var(--text-primary);
+}
+
+.spark {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 0.8;
+  animation: twinkle 3.2s ease-in-out infinite;
+}
+
+.spark--left {
+  top: -4px;
+  left: 38px;
+}
+
+.spark--right {
+  top: 29px;
+  right: 36px;
+  animation-delay: 1.4s;
+}
+
+@keyframes twinkle {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+}
+
+.btn--ghost {
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+}
+
+.btn--ghost:active {
+  background: var(--bg-surface);
+}
