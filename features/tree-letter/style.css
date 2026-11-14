@@ -1166,3 +1166,14 @@ svg.lucide {
 .btn--ghost:active {
   background: var(--bg-surface);
 }
+
+
+/* ---------- 편지 목록: 한 줄에 하나씩 ---------- */
+.letter-list {
+  grid-template-columns: 1fr;
+}
+
+.card {
+  min-height: 0;
+  gap: 6px;
+}
