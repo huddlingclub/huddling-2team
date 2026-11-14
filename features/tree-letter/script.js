@@ -25,6 +25,15 @@
     { id: 'candy', label: '지팡이 사탕' },
   ];
   const ornSrc = (id) => `./img/orn-${id}.png`;
+  // Figma 'component' 섹션의 배경 3종 (./img/bg-<n>.jpg).
+  // 옵션 칸의 그림은 ./img/bg-opt-<n>.png 파일을 넣으면 자동으로 보여요. 없으면 빈 칸으로 둬요.
+  const BACKGROUNDS = [
+    { id: 'bg-1', label: '빨간 방', src: './img/bg-1.jpg', thumb: './img/bg-opt-1.png' },
+    { id: 'bg-2', label: '초록 방', src: './img/bg-2.jpg', thumb: './img/bg-opt-2.png' },
+    { id: 'bg-3', label: '눈 내린 마을', src: './img/bg-3.jpg', thumb: './img/bg-opt-3.png' },
+  ];
+  const BG_MAP = Object.fromEntries(BACKGROUNDS.map((b) => [b.id, b]));
+  const DEFAULT_BG = 'bg-1';
   const ORN_MAP = Object.fromEntries(ORNAMENTS.map((o) => [o.id, o]));
   // 함께 편집하는 사람을 구분하는 색 (Figma 공동편집의 이름표 색처럼)
   const PEER_COLORS = ['#F97066', '#FDB022', '#47CD89', '#53B1FD', '#BDB4FE', '#F670C7', '#2ED3B7', '#FD853A'];
@@ -91,6 +100,8 @@
   const ornaments = new Map(); // id -> { id, type, x, y, nick }
   let letters = [];
   let selectedId = null;
+  let tab = 'ornament';
+  let bg = DEFAULT_BG;
   let drag = null; // { id, moved, lastSent }
   const remote = new Map(); // 다른 사람 sid -> { id, nick, color, at }
   let peerCount = 1;
@@ -118,6 +129,9 @@
         else if (p.new && p.new.team === team) upsertOrnament(p.new);
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tl_letters', filter }, (p) => addLetter(p.new))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tl_settings', filter }, (p) => {
+        if (p.new && p.new.bg) setBgLocal(p.new.bg);
+      })
       // 드래그 중인 위치 · 선택 표시는 DB에 저장하지 않고 바로 주고받아요.
       .on('broadcast', { event: 'move' }, ({ payload }) => onRemoteMove(payload))
       .on('broadcast', { event: 'select' }, ({ payload }) => onRemoteSelect(payload))
@@ -138,9 +152,10 @@
   }
 
   async function loadAll() {
-    const [o, l] = await Promise.all([
+    const [o, l, st] = await Promise.all([
       db.from('tl_ornaments').select('id,type,x,y,nick').eq('team', team).order('created_at'),
       db.from('tl_letters').select('id,nick,text,created_at').eq('team', team).order('created_at', { ascending: false }).limit(500),
+      db.from('tl_settings').select('bg').eq('team', team).maybeSingle(),
     ]);
     if (o.error || l.error) return toast('불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.');
     const keep = drag && ornaments.get(drag.id);
@@ -148,6 +163,7 @@
     for (const row of o.data) ornaments.set(row.id, row);
     if (keep) ornaments.set(keep.id, keep);
     letters = l.data;
+    if (st.data && st.data.bg) setBgLocal(st.data.bg);
     if (selectedId && !ornaments.has(selectedId)) selectedId = null;
     renderAll();
   }
@@ -195,6 +211,48 @@
 
   function renderTitle() {
     $$('[data-team-title]').forEach((el) => (el.textContent = `${team}조 트리 · ${peerCount}명`));
+  }
+
+  let bgFront = 0;
+  function paintBg(id, instant) {
+    const def = BG_MAP[id] || BG_MAP[DEFAULT_BG];
+    const layers = $$('.bg-layer');
+    if (layers.length < 2) return;
+    if (instant) {
+      layers[bgFront].style.backgroundImage = `url('${def.src}')`;
+      layers[bgFront].classList.add('is-on');
+      return;
+    }
+    // 그림을 먼저 받아 둔 뒤에 넘겨야 중간에 빈 화면이 보이지 않아요.
+    const img = new Image();
+    img.onload = img.onerror = () => {
+      if (bg !== def.id) return; // 그사이 다른 배경으로 바뀌었으면 건너뛰어요.
+      const next = 1 - bgFront;
+      layers[next].style.backgroundImage = `url('${def.src}')`;
+      layers[next].classList.add('is-on');
+      layers[bgFront].classList.remove('is-on');
+      bgFront = next;
+    };
+    img.src = def.src;
+  }
+
+  function setBgLocal(next) {
+    const id = BG_MAP[next] ? next : DEFAULT_BG;
+    if (id === bg) return;
+    bg = id;
+    paintBg(bg, false);
+    if (tab === 'bg') renderItems();
+  }
+
+  async function setBackground(next) {
+    if (next === bg || !db) return;
+    const prev = bg;
+    setBgLocal(next);
+    const { error } = await db.from('tl_settings').upsert({ team, bg: next });
+    if (error) {
+      setBgLocal(prev);
+      toast('배경을 바꾸지 못했어요.');
+    }
   }
 
   // 요소를 지우고 다시 만들지 않고, id 기준으로 위치만 바꿔요 (드래그 중인 요소가 끊기지 않도록).
@@ -337,12 +395,31 @@
 
   /* ---------- 하단 목록 ---------- */
   function renderItems() {
-    $('#items').innerHTML = ORNAMENTS.map(
-      (o) => `
+    $$('.tab').forEach((t) => {
+      const on = t.dataset.tab === tab;
+      t.classList.toggle('is-on', on);
+      t.setAttribute('aria-selected', String(on));
+    });
+    const list = $('#items');
+    list.dataset.tab = tab;
+    if (tab === 'ornament') {
+      list.innerHTML = ORNAMENTS.map(
+        (o) => `
       <button type="button" class="item" data-orn="${o.id}" aria-label="${o.label} 달기">
         <img src="${ornSrc(o.id)}" alt="" draggable="false" />
       </button>`
-    ).join('');
+      ).join('');
+    } else {
+      // 옵션 그림 파일이 아직 없으면 그림을 숨겨서 빈 칸으로 보여줘요.
+      list.innerHTML = BACKGROUNDS.map(
+        (o) => `
+      <button type="button" class="item item--bg${o.id === bg ? ' is-on' : ''}" data-bg="${o.id}"
+        aria-pressed="${o.id === bg}" aria-label="배경: ${o.label}">
+        <img src="${o.thumb}" alt="" draggable="false" onerror="this.remove()" />
+      </button>`
+      ).join('');
+    }
+    list.scrollLeft = 0;
     updateScrollHint();
   }
 
@@ -528,8 +605,18 @@
     $('#items').addEventListener('click', (e) => {
       if (!db) return;
       const orn = e.target.closest('[data-orn]');
+      const bgBtn = e.target.closest('[data-bg]');
       if (orn) addOrnament(orn.dataset.orn);
+      else if (bgBtn) setBackground(bgBtn.dataset.bg);
     });
+
+    $$('.tab').forEach((t) =>
+      t.addEventListener('click', () => {
+        if (tab === t.dataset.tab) return;
+        tab = t.dataset.tab;
+        renderItems();
+      })
+    );
 
     bindDrag();
 
@@ -591,6 +678,7 @@
     $$('[data-team-start]').forEach((el) => (el.textContent = `${team}조 트리 꾸미러 가기`));
     document.title = `${team}조 트리 · Merry Huddling Tree`;
     bind();
+    paintBg(bg, true);
     renderTitle();
     renderItems();
     renderLetters();
