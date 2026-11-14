@@ -45,7 +45,7 @@
         <form class="nick-form" id="nickForm" autocomplete="off">
           <div class="head head--left">
             <h1 class="title">닉네임을 입력해 주세요</h1>
-            <p class="sub">오너먼트와 편지에 이 이름이 함께 남아요.</p>
+            <p class="sub">이 이름으로 우리 조 트리에 참여해요. 편지에 표시돼요.</p>
           </div>
           <label class="field">
             <input id="nickInput" class="input" type="text" placeholder="닉네임" enterkeyhint="done" />
@@ -70,11 +70,6 @@
             <span class="badge" id="letterBadge" hidden></span>
           </button>
         </div>
-
-        <p class="notice" id="localNotice" hidden>
-          <i data-lucide="hard-drive"></i>
-          아직 저장소가 연결되지 않아 이 기기에만 저장돼요.
-        </p>
 
         <div class="canvas" id="canvas" data-bg="night">
           <div class="tree-box" id="treeBox">
@@ -106,7 +101,6 @@
         </div>
         <div class="letter-list" id="letterList"></div>
         <form class="composer" id="letterForm" autocomplete="off">
-          <div class="img-row" id="imgRow" role="radiogroup" aria-label="메시지에 붙일 이미지"></div>
           <div class="input-row">
             <label class="field field--grow">
               <input id="letterInput" class="input" type="text" placeholder="메시지 남기기" enterkeyhint="send" />
@@ -121,6 +115,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
     <script src="./script.js"></script>
   </body>
 </html>

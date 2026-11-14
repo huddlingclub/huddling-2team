@@ -1,12 +1,17 @@
 (() => {
   'use strict';
 
-  /* ---------- 설정 (api/tree-letter.js 의 값과 맞춰야 해요) ---------- */
-  const TEAM_COUNT = 6; // 조 개수. 확정되면 바꿔 주세요.
+  /* ---------- 설정 ---------- */
+  const TEAM_COUNT = 16;
   const NICK_MAX = 10;
   const LETTER_MAX = 30;
-  const POLL_MS = 5000;
-  const API = '/api/tree-letter';
+  // Supabase 공개(publishable) 키예요. 브라우저에 노출되는 용도로 만들어진 키라 코드에 둬도 돼요.
+  // 접근 범위는 Supabase의 테이블 정책(RLS)으로 제한해요. secret 키는 절대 여기에 두지 않아요.
+  const SUPABASE_URL = 'https://jcrpnjhdiutdbweyiuub.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_5JVd4gBphymZspARFZku1g_pxjLEQ7y';
+  const MOVE_SEND_MS = 90; // 드래그 중 위치를 보내는 간격
+  const REMOTE_TTL_MS = 6000; // 다른 사람의 선택 표시가 사라지는 시간
+  const SELECT_BEAT_MS = 2500;
 
   const ORNAMENTS = [
     { id: 'ball', icon: 'sparkle', color: '#D8433B' },
@@ -24,15 +29,9 @@
     { id: 'warm', label: '따뜻한 방' },
     { id: 'forest', label: '숲속' },
   ];
-  // 편지에 붙이는 임시 이미지. 색은 Figma 변수의 300 단계 값이에요.
-  const LETTER_IMAGES = [
-    { id: 'heart', icon: 'heart', fg: '#FDA29B' },
-    { id: 'star', icon: 'star', fg: '#FEC84B' },
-    { id: 'gift', icon: 'gift', fg: '#75E0A7' },
-    { id: 'snow', icon: 'snowflake', fg: '#D7D3D0' },
-  ];
   const ORN_MAP = Object.fromEntries(ORNAMENTS.map((o) => [o.id, o]));
-  const IMG_MAP = Object.fromEntries(LETTER_IMAGES.map((o) => [o.id, o]));
+  // 함께 편집하는 사람을 구분하는 색 (Figma 공동편집의 이름표 색처럼)
+  const PEER_COLORS = ['#F97066', '#FDB022', '#47CD89', '#53B1FD', '#BDB4FE', '#F670C7', '#2ED3B7', '#FD853A'];
 
   // 임시 트리 그래픽. 최종 일러스트가 나오면 이 부분만 바꾸면 돼요.
   const TREE_SVG = `
@@ -52,17 +51,18 @@
   const refreshIcons = () => {
     if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.75 } });
   };
-  const session = {
+  // 로그인이 없어서 이 기기(브라우저)에 저장해요. 다시 들어와도 닉네임이 유지돼요.
+  const store = {
     get: (k) => {
       try {
-        return sessionStorage.getItem(k);
+        return localStorage.getItem(k);
       } catch {
         return null;
       }
     },
     set: (k, v) => {
       try {
-        sessionStorage.setItem(k, v);
+        localStorage.setItem(k, v);
       } catch {
         /* 저장이 막힌 브라우저에서도 화면은 동작해야 해요 */
       }
@@ -71,13 +71,16 @@
   const newId = () =>
     window.crypto && crypto.randomUUID
       ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+          const r = (Math.random() * 16) | 0;
+          return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+        });
+  const clamp = (v) => Math.min(96, Math.max(4, Math.round(v * 10) / 10));
 
   let toastTimer;
   function toast(msg) {
     const el = $('#toast');
     const dialog = $('#letterDialog');
-    // 편지 모달이 열려 있으면 모달 위에 보여야 해서 모달 안으로 옮겨요.
     (dialog.open ? dialog : document.body).appendChild(el);
     el.textContent = msg;
     el.classList.add('is-on');
@@ -89,114 +92,87 @@
   const teamParam = Number(new URLSearchParams(location.search).get('team'));
   const team = Number.isInteger(teamParam) && teamParam >= 1 && teamParam <= TEAM_COUNT ? teamParam : null;
 
-  // 참여는 세션(브라우저 탭) 단위: 탭을 닫으면 닉네임과 내 오너먼트 표시가 초기화돼요.
-  let sid = session.get('tl:sid');
+  let sid = store.get('tl:sid');
   if (!sid) {
     sid = newId();
-    session.set('tl:sid', sid);
+    store.set('tl:sid', sid);
   }
-  let nick = session.get('tl:nick') || '';
+  let nick = store.get('tl:nick') || '';
+  const myColor = PEER_COLORS[[...sid].reduce((a, c) => a + c.charCodeAt(0), 0) % PEER_COLORS.length];
 
-  let data = { ornaments: [], letters: [], bg: 'night' };
-  let dataKey = '';
-  let mode = 'remote'; // 'remote' = Vercel 저장소, 'local' = 이 기기에만
-  let remoteOk = false;
-  let pending = 0;
-  let pollTimer = null;
-
+  const ornaments = new Map(); // id -> { id, type, x, y, nick }
+  let letters = [];
+  let bg = 'night';
   let tab = 'ornament';
-  let selectedOrn = null;
-  let activeOrn = null;
-  let selectedImg = null;
+  let selectedId = null;
+  let drag = null; // { id, moved, lastSent }
+  const remote = new Map(); // 다른 사람 sid -> { id, nick, color, at }
+  let peerCount = 1;
 
-  /* ---------- 저장소 ---------- */
-  const localKey = () => `tl:local:${team}`;
-  function localRead() {
-    try {
-      const raw = JSON.parse(localStorage.getItem(localKey()));
-      if (raw && Array.isArray(raw.ornaments) && Array.isArray(raw.letters)) return raw;
-    } catch {
-      /* 없으면 새로 만들어요 */
-    }
-    return { ornaments: [], letters: [], bg: 'night' };
-  }
-  function localWrite(db) {
-    try {
-      localStorage.setItem(localKey(), JSON.stringify(db));
-    } catch {
-      /* 무시 */
-    }
-  }
-  function localCall(method, body) {
-    const db = localRead();
-    if (method === 'GET') {
-      const mark = ({ sid: owner, ...rest }) => ({ ...rest, mine: owner === sid });
-      return { ornaments: db.ornaments.map(mark), letters: db.letters.map(mark), bg: db.bg };
-    }
-    if (method === 'DELETE') {
-      db.ornaments = db.ornaments.filter((o) => !(o.id === body.id && o.sid === sid));
-    } else if (body.kind === 'ornament') {
-      db.ornaments.push({ id: newId(), type: body.type, x: body.x, y: body.y, nick, sid, at: Date.now() });
-    } else if (body.kind === 'letter') {
-      db.letters.push({ id: newId(), text: body.text, image: body.image, nick, sid, at: Date.now() });
-    } else if (body.kind === 'bg') {
-      db.bg = body.bg;
-    }
-    localWrite(db);
-    return { ok: true };
-  }
+  let db = null;
+  let channel = null;
+  let joined = false;
 
-  async function remoteCall(method, body) {
-    const opt = { method, headers: { 'Content-Type': 'application/json' } };
-    let url = API;
-    if (method === 'GET') url += `?team=${team}&sid=${encodeURIComponent(sid)}`;
-    else opt.body = JSON.stringify({ ...body, team, sid, nick });
-    const res = await fetch(url, opt);
-    const isJson = (res.headers.get('content-type') || '').includes('application/json');
-    if (!isJson || res.status === 404 || res.status === 503) {
-      throw Object.assign(new Error('unavailable'), { unavailable: true });
-    }
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'request_failed');
-    return json;
+  /* ---------- Supabase ---------- */
+  function connect() {
+    if (joined) return;
+    if (!window.supabase) return toast('연결하지 못했어요. 새로고침해 주세요.');
+    joined = true;
+    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false },
+      realtime: { params: { eventsPerSecond: 12 } },
+    });
+    const filter = `team=eq.${team}`;
+    channel = db
+      .channel(`tree-${team}`, { config: { presence: { key: sid }, broadcast: { self: false } } })
+      // 오너먼트는 표 전체를 한 번에 구독하고 조 번호는 여기서 걸러요.
+      // (삭제 알림에는 id만 오기 때문에 조 번호로 미리 거를 수 없어요.)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tl_ornaments' }, (p) => {
+        if (p.eventType === 'DELETE') dropOrnament(p.old && p.old.id);
+        else if (p.new && p.new.team === team) upsertOrnament(p.new);
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tl_letters', filter }, (p) => addLetter(p.new))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tl_settings', filter }, (p) => {
+        if (p.new && p.new.bg) setBgLocal(p.new.bg);
+      })
+      // 드래그 중인 위치 · 선택 표시는 DB에 저장하지 않고 바로 주고받아요.
+      .on('broadcast', { event: 'move' }, ({ payload }) => onRemoteMove(payload))
+      .on('broadcast', { event: 'select' }, ({ payload }) => onRemoteSelect(payload))
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        peerCount = Math.max(1, Object.keys(state).length);
+        for (const key of remote.keys()) if (!state[key]) remote.delete(key);
+        renderTitle();
+        renderBoxes();
+      })
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') console.warn('tree-letter realtime', status, err);
+        if (status === 'SUBSCRIBED') {
+          channel.track({ nick, color: myColor });
+          loadAll(); // 처음 접속했거나 끊겼다 다시 붙었을 때 전체를 다시 읽어요.
+        }
+      });
   }
 
-  async function call(method, body) {
-    if (mode === 'remote') {
-      try {
-        const out = await remoteCall(method, body);
-        remoteOk = true;
-        return out;
-      } catch (err) {
-        // 한 번이라도 저장소에 연결됐다면 기기 저장으로 바꾸지 않아요 (데이터가 갈라지면 안 되니까요).
-        const cannotReach = err.unavailable || err instanceof TypeError;
-        if (remoteOk || !cannotReach) throw err;
-        mode = 'local';
-        $('#localNotice').hidden = false;
-        refreshIcons();
-      }
-    }
-    return localCall(method, body);
-  }
-
-  async function refresh() {
-    if (pending > 0) return;
-    let next;
-    try {
-      next = await call('GET');
-    } catch {
-      return; // 잠깐 끊긴 경우: 다음 주기에 다시 시도
-    }
-    if (pending > 0) return;
-    const key = JSON.stringify(next);
-    if (key === dataKey) return;
-    dataKey = key;
-    data = {
-      ornaments: next.ornaments || [],
-      letters: (next.letters || []).slice().sort((a, b) => b.at - a.at),
-      bg: next.bg || 'night',
-    };
+  async function loadAll() {
+    const [o, l, s] = await Promise.all([
+      db.from('tl_ornaments').select('id,type,x,y,nick').eq('team', team).order('created_at'),
+      db.from('tl_letters').select('id,nick,text,created_at').eq('team', team).order('created_at', { ascending: false }).limit(500),
+      db.from('tl_settings').select('bg').eq('team', team).maybeSingle(),
+    ]);
+    if (o.error || l.error) return toast('불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.');
+    const keep = drag && ornaments.get(drag.id);
+    ornaments.clear();
+    for (const row of o.data) ornaments.set(row.id, row);
+    if (keep) ornaments.set(keep.id, keep);
+    letters = l.data;
+    if (s.data && s.data.bg) bg = s.data.bg;
+    if (selectedId && !ornaments.has(selectedId)) selectedId = null;
     renderAll();
+  }
+
+  function send(event, payload) {
+    if (channel) channel.send({ type: 'broadcast', event, payload: { ...payload, sid, nick, color: myColor } });
   }
 
   /* ---------- 화면 전환 ---------- */
@@ -204,12 +180,7 @@
     $$('[data-screen]').forEach((el) => {
       el.hidden = el.dataset.screen !== name;
     });
-    clearInterval(pollTimer);
-    pollTimer = null;
-    if (name === 'decorate') {
-      refresh();
-      pollTimer = setInterval(refresh, POLL_MS);
-    }
+    if (name === 'decorate') connect();
     if (name === 'nick') {
       const input = $('#nickInput');
       input.value = nick;
@@ -218,64 +189,184 @@
     }
   }
 
-  /* ---------- ② 닉네임 ---------- */
   function updateNick() {
     const input = $('#nickInput');
-    const value = input.value.trim();
     $('#nickCount').textContent = `${[...input.value].length}/${NICK_MAX}`;
-    $('#nickNext').disabled = value.length === 0;
+    $('#nickNext').disabled = input.value.trim().length === 0;
   }
 
-  /* ---------- ③ 꾸미기 ---------- */
+  /* ---------- 트리 · 오너먼트 ---------- */
   function renderAll() {
-    $('#canvas').dataset.bg = data.bg;
+    setBgLocal(bg);
     renderOrnaments();
     renderItems();
     renderLetters();
+    renderTitle();
   }
 
+  function renderTitle() {
+    $$('[data-team-title]').forEach((el) => (el.textContent = `${team}조 트리 · ${peerCount}명`));
+  }
+
+  function setBgLocal(next) {
+    bg = next;
+    $('#canvas').dataset.bg = bg;
+    if (tab === 'bg') renderItems();
+  }
+
+  // 요소를 지우고 다시 만들지 않고, id 기준으로 위치만 바꿔요 (드래그 중인 요소가 끊기지 않도록).
   function renderOrnaments() {
     const layer = $('#ornLayer');
-    if (activeOrn && !data.ornaments.some((o) => o.id === activeOrn)) activeOrn = null;
-    const nodes = [];
-    for (const o of data.ornaments) {
+    const seen = new Set();
+    for (const o of ornaments.values()) {
       const def = ORN_MAP[o.type];
       if (!def) continue;
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'orn';
-      if (o.pending) b.classList.add('is-pending');
-      if (o.id === activeOrn) b.classList.add('is-active');
-      b.dataset.id = o.id;
-      b.style.left = `${o.x}%`;
-      b.style.top = `${o.y}%`;
-      b.style.setProperty('--c', def.color);
-      b.setAttribute('aria-label', `${o.nick}님의 오너먼트`);
-      b.innerHTML = icon(def.icon);
-      nodes.push(b);
-    }
-    const active = data.ornaments.find((o) => o.id === activeOrn);
-    if (active) {
-      const bubble = document.createElement('div');
-      bubble.className = 'orn-bubble';
-      bubble.style.left = `${active.x}%`;
-      bubble.style.top = `${active.y}%`;
-      const name = document.createElement('span');
-      name.textContent = active.mine ? `${active.nick} (나)` : active.nick;
-      bubble.appendChild(name);
-      if (active.mine && !active.pending) {
-        const remove = document.createElement('button');
-        remove.type = 'button';
-        remove.dataset.remove = active.id;
-        remove.textContent = '떼기';
-        bubble.appendChild(remove);
+      seen.add(o.id);
+      let el = layer.querySelector(`.orn[data-id="${o.id}"]`);
+      if (!el) {
+        el = document.createElement('button');
+        el.type = 'button';
+        el.className = 'orn';
+        el.dataset.id = o.id;
+        el.style.setProperty('--c', def.color);
+        el.setAttribute('aria-label', `${o.nick}님이 단 오너먼트`);
+        el.innerHTML = icon(def.icon);
+        layer.appendChild(el);
       }
-      nodes.push(bubble);
+      el.style.left = `${o.x}%`;
+      el.style.top = `${o.y}%`;
     }
-    layer.replaceChildren(...nodes);
+    for (const el of layer.querySelectorAll('.orn')) if (!seen.has(el.dataset.id)) el.remove();
     refreshIcons();
+    renderBoxes();
   }
 
+  // 선택 박스: 내 것은 흰 점선 + X, 다른 사람 것은 그 사람 색 + 이름표.
+  function renderBoxes() {
+    const layer = $('#ornLayer');
+    layer.querySelectorAll('.orn-box').forEach((el) => el.remove());
+    const now = Date.now();
+    for (const [key, r] of remote) {
+      if (now - r.at > REMOTE_TTL_MS) {
+        remote.delete(key);
+        continue;
+      }
+      const o = ornaments.get(r.id);
+      if (!o || r.id === selectedId) continue;
+      const box = document.createElement('div');
+      box.className = 'orn-box is-remote';
+      box.dataset.for = r.id;
+      box.style.left = `${o.x}%`;
+      box.style.top = `${o.y}%`;
+      box.style.setProperty('--peer', r.color);
+      const tag = document.createElement('span');
+      tag.className = 'orn-tag';
+      tag.textContent = r.nick;
+      box.appendChild(tag);
+      layer.appendChild(box);
+    }
+    const mine = selectedId && ornaments.get(selectedId);
+    if (mine) {
+      const box = document.createElement('div');
+      box.className = 'orn-box is-mine';
+      box.dataset.for = mine.id;
+      box.style.left = `${mine.x}%`;
+      box.style.top = `${mine.y}%`;
+      box.innerHTML = `<button type="button" class="orn-x" data-remove="${mine.id}" aria-label="오너먼트 지우기">${icon('x')}</button>`;
+      layer.appendChild(box);
+      refreshIcons();
+    }
+  }
+
+  function moveDom(id, x, y) {
+    const layer = $('#ornLayer');
+    for (const el of layer.querySelectorAll(`.orn[data-id="${id}"], .orn-box[data-for="${id}"]`)) {
+      el.style.left = `${x}%`;
+      el.style.top = `${y}%`;
+    }
+  }
+
+  function upsertOrnament(row) {
+    if (!row || !row.id) return;
+    if (drag && drag.id === row.id) return; // 내가 끌고 있는 동안은 내 위치가 우선
+    ornaments.set(row.id, { id: row.id, type: row.type, x: row.x, y: row.y, nick: row.nick });
+    renderOrnaments();
+  }
+
+  function dropOrnament(id) {
+    if (!id || !ornaments.has(id)) return;
+    ornaments.delete(id);
+    if (selectedId === id) selectedId = null;
+    if (drag && drag.id === id) drag = null;
+    renderOrnaments();
+  }
+
+  function select(id) {
+    if (selectedId === id) return;
+    selectedId = id;
+    send('select', { id });
+    renderBoxes();
+  }
+
+  async function addOrnament(type) {
+    const o = { id: newId(), type, x: clamp(35 + Math.random() * 30), y: clamp(38 + Math.random() * 36), nick };
+    ornaments.set(o.id, o);
+    renderOrnaments();
+    select(o.id);
+    const { error } = await db.from('tl_ornaments').insert({ ...o, team });
+    if (error) {
+      dropOrnament(o.id);
+      toast('달지 못했어요. 다시 시도해 주세요.');
+    }
+  }
+
+  async function removeOrnament(id) {
+    const backup = ornaments.get(id);
+    dropOrnament(id);
+    send('select', { id: null });
+    const { error } = await db.from('tl_ornaments').delete().eq('id', id);
+    if (error && backup) {
+      ornaments.set(id, backup);
+      renderOrnaments();
+      toast('지우지 못했어요. 다시 시도해 주세요.');
+    }
+  }
+
+  async function setBackground(next) {
+    if (next === bg) return;
+    const prev = bg;
+    setBgLocal(next);
+    renderItems();
+    const { error } = await db.from('tl_settings').upsert({ team, bg: next });
+    if (error) {
+      setBgLocal(prev);
+      renderItems();
+      toast('배경을 바꾸지 못했어요.');
+    }
+  }
+
+  /* ---------- 다른 사람의 편집 표시 ---------- */
+  function onRemoteMove(p) {
+    if (!p || p.sid === sid) return;
+    remote.set(p.sid, { id: p.id, nick: p.nick, color: p.color, at: Date.now() });
+    const o = ornaments.get(p.id);
+    if (o && !(drag && drag.id === p.id)) {
+      o.x = p.x;
+      o.y = p.y;
+      moveDom(p.id, p.x, p.y);
+    }
+    const box = $('#ornLayer').querySelector(`.orn-box.is-remote[data-for="${p.id}"]`);
+    if (!box) renderBoxes();
+  }
+
+  function onRemoteSelect(p) {
+    if (!p || p.sid === sid) return;
+    if (p.id) remote.set(p.sid, { id: p.id, nick: p.nick, color: p.color, at: Date.now() });
+    else remote.delete(p.sid);
+    renderBoxes();
+  }
+
+  /* ---------- 하단 목록 ---------- */
   function renderItems() {
     const box = $('#items');
     $$('.tab').forEach((t) => {
@@ -284,13 +375,10 @@
       t.setAttribute('aria-selected', String(on));
     });
     if (tab === 'ornament') {
-      $('#sheetHint').textContent = selectedOrn
-        ? '트리에서 달고 싶은 자리를 눌러 주세요.'
-        : '오너먼트를 고른 뒤 트리를 눌러 달아 주세요.';
+      $('#sheetHint').textContent = '누르면 트리에 달려요. 끌어서 옮기고, X로 지워요.';
       box.innerHTML = ORNAMENTS.map(
         (o) => `
-        <button type="button" class="item${o.id === selectedOrn ? ' is-on' : ''}" data-orn="${o.id}"
-          aria-pressed="${o.id === selectedOrn}" aria-label="오너먼트 ${o.id}">
+        <button type="button" class="item" data-orn="${o.id}" aria-label="오너먼트 ${o.id} 달기">
           <span class="dot" style="--c:${o.color}">${icon(o.icon)}</span>
         </button>`
       ).join('');
@@ -298,8 +386,8 @@
       $('#sheetHint').textContent = '배경은 우리 조 모두에게 똑같이 보여요.';
       box.innerHTML = BACKGROUNDS.map(
         (b) => `
-        <button type="button" class="item item--bg${b.id === data.bg ? ' is-on' : ''}" data-bg="${b.id}"
-          aria-pressed="${b.id === data.bg}">
+        <button type="button" class="item item--bg${b.id === bg ? ' is-on' : ''}" data-bg="${b.id}"
+          aria-pressed="${b.id === bg}">
           <span class="swatch" data-bg="${b.id}"></span>${b.label}
         </button>`
       ).join('');
@@ -307,106 +395,37 @@
     refreshIcons();
   }
 
-  async function placeOrnament(x, y) {
-    const temp = { id: `tmp-${newId()}`, type: selectedOrn, x, y, nick, mine: true, pending: true };
-    data.ornaments.push(temp);
-    renderOrnaments();
-    pending += 1;
-    let failed = false;
-    try {
-      await call('POST', { kind: 'ornament', type: temp.type, x, y });
-    } catch (err) {
-      failed = true;
-      toast(err.message === 'full' ? '트리가 가득 찼어요.' : '달지 못했어요. 다시 시도해 주세요.');
-    }
-    pending -= 1;
-    if (failed) {
-      data.ornaments = data.ornaments.filter((o) => o !== temp);
-      renderOrnaments();
-    }
-    dataKey = '';
-    refresh();
+  /* ---------- 편지 ---------- */
+  function addLetter(row) {
+    if (!row || letters.some((l) => l.id === row.id)) return;
+    letters.unshift(row);
+    renderLetters();
   }
 
-  async function removeOrnament(id) {
-    activeOrn = null;
-    data.ornaments = data.ornaments.filter((o) => o.id !== id);
-    renderOrnaments();
-    pending += 1;
-    try {
-      await call('DELETE', { id });
-    } catch {
-      toast('떼지 못했어요. 다시 시도해 주세요.');
-    }
-    pending -= 1;
-    dataKey = '';
-    refresh();
-  }
-
-  async function setBackground(bg) {
-    if (bg === data.bg) return;
-    const prev = data.bg;
-    data.bg = bg;
-    $('#canvas').dataset.bg = bg;
-    renderItems();
-    pending += 1;
-    try {
-      await call('POST', { kind: 'bg', bg });
-    } catch {
-      data.bg = prev;
-      $('#canvas').dataset.bg = prev;
-      renderItems();
-      toast('배경을 바꾸지 못했어요.');
-    }
-    pending -= 1;
-    dataKey = '';
-    refresh();
-  }
-
-  /* ---------- ④ 편지 ---------- */
   function renderLetters() {
     const badge = $('#letterBadge');
-    badge.hidden = data.letters.length === 0;
-    badge.textContent = data.letters.length > 99 ? '99+' : String(data.letters.length);
+    badge.hidden = letters.length === 0;
+    badge.textContent = letters.length > 99 ? '99+' : String(letters.length);
 
     const list = $('#letterList');
-    if (data.letters.length === 0) {
+    if (letters.length === 0) {
       list.innerHTML = `<div class="empty">${icon('mail-open')}아직 남겨진 편지가 없어요.<br />첫 한마디를 남겨 보세요.</div>`;
       refreshIcons();
       return;
     }
-    const cards = data.letters.map((l) => {
+    const cards = letters.map((l) => {
       const card = document.createElement('article');
-      card.className = `card${l.mine ? ' is-mine' : ''}`;
-      const img = IMG_MAP[l.image];
-      if (img) {
-        const tile = document.createElement('span');
-        tile.className = 'card-img';
-        tile.style.setProperty('--fg', img.fg);
-        tile.innerHTML = icon(img.icon);
-        card.appendChild(tile);
-      }
+      card.className = 'card';
+      const who = document.createElement('span');
+      who.className = 'card-nick';
+      who.textContent = l.nick;
       const text = document.createElement('p');
       text.className = 'card-text';
       text.textContent = l.text;
-      const who = document.createElement('span');
-      who.className = 'card-nick';
-      who.textContent = l.mine ? `${l.nick} (나)` : l.nick;
-      card.append(text, who);
+      card.append(who, text);
       return card;
     });
     list.replaceChildren(...cards);
-    refreshIcons();
-  }
-
-  function renderImagePicker() {
-    $('#imgRow').innerHTML = LETTER_IMAGES.map(
-      (i) => `
-      <button type="button" class="img-opt${i.id === selectedImg ? ' is-on' : ''}" data-img="${i.id}"
-        role="radio" aria-checked="${i.id === selectedImg}" aria-label="이미지 ${i.id}"
-        style="--fg:${i.fg}">${icon(i.icon)}</button>`
-    ).join('');
-    refreshIcons();
   }
 
   function updateLetter() {
@@ -417,20 +436,18 @@
 
   async function sendLetter() {
     const input = $('#letterInput');
-    const text = input.value.trim();
-    if (!text) return;
+    const text = [...input.value.trim()].slice(0, LETTER_MAX).join('');
+    if (!text || !db) return;
     $('#letterSend').disabled = true;
-    try {
-      await call('POST', { kind: 'letter', text, image: selectedImg });
+    const row = { id: newId(), team, nick, text };
+    const { error } = await db.from('tl_letters').insert(row);
+    if (error) {
+      toast('남기지 못했어요. 다시 시도해 주세요.');
+    } else {
       input.value = '';
-      selectedImg = null;
-      renderImagePicker();
-      dataKey = '';
-      await refresh();
+      addLetter({ ...row, created_at: new Date().toISOString() });
       $('#letterList').scrollTop = 0;
       toast('편지를 남겼어요.');
-    } catch {
-      toast('남기지 못했어요. 다시 시도해 주세요.');
     }
     updateLetter();
   }
@@ -452,6 +469,76 @@
     });
   }
 
+  function bindDrag() {
+    const box = $('#treeBox');
+    const point = (e) => {
+      const rect = box.getBoundingClientRect();
+      return {
+        x: clamp(((e.clientX - rect.left) / rect.width) * 100),
+        y: clamp(((e.clientY - rect.top) / rect.height) * 100),
+      };
+    };
+
+    box.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('[data-remove]')) return;
+      const el = e.target.closest('.orn');
+      if (!el) {
+        if (selectedId) {
+          selectedId = null;
+          send('select', { id: null });
+          renderBoxes();
+        }
+        return;
+      }
+      e.preventDefault();
+      select(el.dataset.id);
+      drag = { id: el.dataset.id, moved: false, lastSent: 0, startX: e.clientX, startY: e.clientY };
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {
+        /* 일부 브라우저에서는 실패할 수 있어요. 끌기는 그대로 동작해요. */
+      }
+      el.classList.add('is-dragging');
+    });
+
+    box.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      if (!drag.moved && Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 4) return;
+      drag.moved = true;
+      const o = ornaments.get(drag.id);
+      if (!o) return;
+      const p = point(e);
+      o.x = p.x;
+      o.y = p.y;
+      moveDom(o.id, o.x, o.y);
+      const now = Date.now();
+      if (now - drag.lastSent >= MOVE_SEND_MS) {
+        drag.lastSent = now;
+        send('move', { id: o.id, x: o.x, y: o.y });
+      }
+    });
+
+    const end = async () => {
+      if (!drag) return;
+      const { id, moved } = drag;
+      drag = null;
+      const el = $('#ornLayer').querySelector(`.orn[data-id="${id}"]`);
+      if (el) el.classList.remove('is-dragging');
+      const o = ornaments.get(id);
+      if (!moved || !o) return;
+      send('move', { id, x: o.x, y: o.y });
+      const { error } = await db.from('tl_ornaments').update({ x: o.x, y: o.y }).eq('id', id);
+      if (error) toast('위치를 저장하지 못했어요.');
+    };
+    box.addEventListener('pointerup', end);
+    box.addEventListener('pointercancel', end);
+
+    box.addEventListener('click', (e) => {
+      const remove = e.target.closest('[data-remove]');
+      if (remove) removeOrnament(remove.dataset.remove);
+    });
+  }
+
   function bind() {
     $('#startBtn').addEventListener('click', () => show(nick ? 'decorate' : 'nick'));
     $('#nickBack').addEventListener('click', () => show('home'));
@@ -462,7 +549,7 @@
       const value = [...$('#nickInput').value.trim()].slice(0, NICK_MAX).join('');
       if (!value) return;
       nick = value;
-      session.set('tl:nick', nick);
+      store.set('tl:nick', nick);
       show('decorate');
     });
 
@@ -474,37 +561,14 @@
     );
 
     $('#items').addEventListener('click', (e) => {
+      if (!db) return;
       const orn = e.target.closest('[data-orn]');
-      const bg = e.target.closest('[data-bg]');
-      if (orn) {
-        selectedOrn = selectedOrn === orn.dataset.orn ? null : orn.dataset.orn;
-        renderItems();
-      } else if (bg) {
-        setBackground(bg.dataset.bg);
-      }
+      const bgBtn = e.target.closest('[data-bg]');
+      if (orn) addOrnament(orn.dataset.orn);
+      else if (bgBtn) setBackground(bgBtn.dataset.bg);
     });
 
-    $('#treeBox').addEventListener('click', (e) => {
-      const remove = e.target.closest('[data-remove]');
-      if (remove) return removeOrnament(remove.dataset.remove);
-      if (e.target.closest('.orn-bubble')) return;
-      const orn = e.target.closest('.orn');
-      if (orn) {
-        activeOrn = activeOrn === orn.dataset.id ? null : orn.dataset.id;
-        return renderOrnaments();
-      }
-      if (activeOrn) {
-        activeOrn = null;
-        return renderOrnaments();
-      }
-      if (!selectedOrn) return toast('아래에서 오너먼트를 먼저 골라 주세요.');
-      const rect = $('#treeBox').getBoundingClientRect();
-      const clamp = (v) => Math.min(96, Math.max(4, Math.round(v * 10) / 10));
-      placeOrnament(
-        clamp(((e.clientX - rect.left) / rect.width) * 100),
-        clamp(((e.clientY - rect.top) / rect.height) * 100)
-      );
-    });
+    bindDrag();
 
     $('#shareBtn').addEventListener('click', async () => {
       const url = `${location.origin}${location.pathname}?team=${team}`;
@@ -521,27 +585,25 @@
 
     const dialog = $('#letterDialog');
     $('#letterBtn').addEventListener('click', () => {
-      renderImagePicker();
       updateLetter();
       dialog.showModal();
-      refresh();
     });
     $('#letterClose').addEventListener('click', () => dialog.close());
 
     limitInput($('#letterInput'), LETTER_MAX, updateLetter);
-    $('#imgRow').addEventListener('click', (e) => {
-      const opt = e.target.closest('[data-img]');
-      if (!opt) return;
-      selectedImg = selectedImg === opt.dataset.img ? null : opt.dataset.img;
-      renderImagePicker();
-    });
     $('#letterForm').addEventListener('submit', (e) => {
       e.preventDefault();
       sendLetter();
     });
 
+    // 선택 중이라는 표시를 주기적으로 다시 알리고, 오래된 표시는 지워요.
+    setInterval(() => {
+      if (selectedId && !drag) send('select', { id: selectedId });
+      if (remote.size) renderBoxes();
+    }, SELECT_BEAT_MS);
+
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && pollTimer) refresh();
+      if (!document.hidden && db && joined) loadAll();
     });
   }
 
@@ -559,10 +621,11 @@
     }
 
     $$('[data-team-label]').forEach((el) => (el.textContent = `${team}조`));
-    $$('[data-team-title]').forEach((el) => (el.textContent = `${team}조 트리`));
     document.title = `${team}조 트리 · 허들링 트리`;
     bind();
-    renderAll();
+    renderTitle();
+    renderItems();
+    renderLetters();
     show('home');
   }
 

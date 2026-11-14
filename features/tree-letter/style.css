@@ -772,3 +772,74 @@ svg.lucide {
     transition: none !important;
   }
 }
+
+/* ---------- 실시간 공동 편집: 끌기 · 선택 박스 · 이름표 ---------- */
+.orn {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+.orn.is-dragging {
+  cursor: grabbing;
+  z-index: 3;
+  animation: none;
+  transform: scale(1.08);
+}
+
+.orn-box {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.orn-box.is-mine {
+  border: 1.5px dashed var(--action-primary);
+}
+
+.orn-box.is-remote {
+  border: 2px solid var(--peer);
+}
+
+.orn-x {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--action-primary);
+  color: var(--action-on-primary);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}
+
+.orn-x svg.lucide {
+  width: 14px;
+  height: 14px;
+}
+
+.orn-tag {
+  position: absolute;
+  top: 100%;
+  left: -2px;
+  margin-top: 2px;
+  padding: 2px 6px;
+  border-radius: 0 6px 6px 6px;
+  background: var(--peer);
+  color: #171412;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-strong);
+  white-space: nowrap;
+}
+
+.card-nick {
+  color: #fdb022;
+}
