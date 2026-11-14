@@ -1372,3 +1372,11 @@ svg.lucide {
 .items {
   animation: fade-in 0.2s ease;
 }
+
+/* 배경 옵션 칸: Figma 'Bg_thumb' 크기 (71px, 모서리 12px) */
+.item--bg {
+  flex: 0 0 71px;
+  width: 71px;
+  height: 71px;
+  border-radius: 12px;
+}
