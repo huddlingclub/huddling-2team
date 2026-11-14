@@ -362,10 +362,23 @@
     renderLetters();
   }
 
+  // 읽은 위치는 이 기기에 조별로 저장해요 (마지막으로 본 편지의 시각).
+  const readKey = () => `tl:read:${team}`;
+  const letterTime = (l) => Date.parse(l.created_at) || 0;
+
+  function markLettersRead() {
+    const latest = letters.reduce((max, l) => Math.max(max, letterTime(l)), 0);
+    if (latest > Number(store.get(readKey()) || 0)) store.set(readKey(), String(latest));
+  }
+
   function renderLetters() {
+    // 편지 모달이 열려 있으면 지금 보고 있는 것이므로 모두 읽은 것으로 처리해요.
+    if ($('#letterDialog').open) markLettersRead();
+    const readAt = Number(store.get(readKey()) || 0);
+    const unread = letters.filter((l) => letterTime(l) > readAt).length;
     const badge = $('#letterBadge');
-    badge.hidden = letters.length === 0;
-    badge.textContent = letters.length > 99 ? '99+' : String(letters.length);
+    badge.hidden = unread === 0;
+    badge.textContent = unread > 99 ? '99+' : String(unread);
 
     const list = $('#letterList');
     if (letters.length === 0) {
@@ -400,12 +413,12 @@
     if (!text || !db) return;
     $('#letterSend').disabled = true;
     const row = { id: newId(), team, nick, text };
-    const { error } = await db.from('tl_letters').insert(row);
+    const { data: saved, error } = await db.from('tl_letters').insert(row).select('id,nick,text,created_at').single();
     if (error) {
       toast('남기지 못했어요. 다시 시도해 주세요.');
     } else {
       input.value = '';
-      addLetter({ ...row, created_at: new Date().toISOString() });
+      addLetter(saved || { ...row, created_at: new Date().toISOString() });
       $('#letterList').scrollTop = 0;
       toast('편지를 남겼어요.');
     }
@@ -541,6 +554,7 @@
     $('#letterBtn').addEventListener('click', () => {
       updateLetter();
       dialog.showModal();
+      renderLetters();
     });
     $('#letterClose').addEventListener('click', () => dialog.close());
 
