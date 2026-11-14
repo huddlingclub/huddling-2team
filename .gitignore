@@ -1,12 +1,27 @@
-# 개인 AI 설정 (각자 로컬에만)
+# 개인 AI 설정 · 대화 기록 (각자 로컬에만)
 CLAUDE.local.md
 AGENTS.override.md
-.claude/settings.local.json
-.claude/worktrees/
+.claude/*
+!.claude/settings.json
+.codex/
+.cursor/
+.specstory/
+.aider*
+*.jsonl
+*transcript*
+*chat-log*
 
-# 비밀값 (API 키 등)
+# 비밀값 (API 키 · 토큰 · 인증서)
 .env
 .env.*
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+service-account*.json
+*secret*
+.npmrc
 
 # 큰 미디어 · 개인 자료
 *.pdf
@@ -24,6 +39,7 @@ node_modules/
 .vercel/
 .vscode/
 .idea/
+*.log
 
 # OS
 .DS_Store
