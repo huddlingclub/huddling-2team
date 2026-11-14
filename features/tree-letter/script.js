@@ -589,7 +589,7 @@
     $$('[data-tree]').forEach((el) => (el.innerHTML = treeImg(team)));
     $$('[data-team-label]').forEach((el) => (el.textContent = `${team}조`));
     $$('[data-team-start]').forEach((el) => (el.textContent = `${team}조 트리 꾸미러 가기`));
-    document.title = `${team}조 트리 · 허들링 트리`;
+    document.title = `${team}조 트리 · Merry Huddling Tree`;
     bind();
     renderTitle();
     renderItems();
