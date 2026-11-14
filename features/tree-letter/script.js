@@ -337,7 +337,6 @@
 
   /* ---------- 하단 목록 ---------- */
   function renderItems() {
-    $('#sheetHint').textContent = '누르면 트리에 달려요. 끌어서 옮기고, X로 지워요.';
     $('#items').innerHTML = ORNAMENTS.map(
       (o) => `
       <button type="button" class="item" data-orn="${o.id}" aria-label="${o.label} 달기">
