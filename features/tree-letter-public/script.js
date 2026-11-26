@@ -8,8 +8,9 @@
   // Supabase 공개(publishable) 키예요. 브라우저에 노출되는 용도로 만들어진 키라 코드에 둬도 돼요.
   // secret 키는 절대 여기에 두지 않아요.
   // 키를 비워 두면 '미리보기 모드'로 돌아가요: 이 브라우저에만 저장되고 다른 사람과 공유되지 않아요.
-  const SUPABASE_URL = 'https://lnnxswtfqhlrrmvwepit.supabase.co';
-  const SUPABASE_KEY = ''; // sb_publishable_... 를 여기에 넣어요.
+  // 공개용 전용 Supabase 프로젝트(tree-letter-public). 테이블 · 보안 규칙은 supabase-setup.sql 참고.
+  const SUPABASE_URL = 'https://cpmqkbgxhwzdmfwrbotj.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_-TOgvGSOmdqdHE-JXIvXRQ_aU2mkjih';
   const PREVIEW = !SUPABASE_KEY;
   const MOVE_SEND_MS = 90; // 드래그 중 위치를 보내는 간격
   const REMOTE_TTL_MS = 6000; // 다른 사람의 선택 표시가 사라지는 시간
