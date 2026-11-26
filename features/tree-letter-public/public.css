@@ -47,6 +47,11 @@
 
 /* 브라우저 주소창 · 아래 메뉴 때문에 화면이 짧을 때: 제목을 줄이고 위로 올려 트리와 겹치지 않게 해요. */
 @media (max-height: 720px) {
+  /* 짧은 화면에서는 펭귄이 작게 그려진 그림으로 바꿔요. */
+  [data-screen='home'] {
+    background-image: linear-gradient(180deg, #150402 0%, rgba(21, 4, 2, 0) 29%), url('./img/home-short.jpg');
+  }
+
   [data-screen='home'] .head {
     padding-top: calc(28px + env(safe-area-inset-top, 0px));
   }
