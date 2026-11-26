@@ -168,7 +168,17 @@
     const headH = all.length ? 56 * k : 0;
     const listH = cards.reduce((sum, c) => sum + c.h + gap, 0);
     const moreH = all.length > shown.length ? 28 * k : 0;
-    const footH = 84 * k;
+    // 필기체는 y·g 꼬리가 아래로 길게 내려와요. 실제 높이를 재서 아래 글씨와 겹치지 않게 해요.
+    const titleSize = 36 * k;
+    const subSize = 11 * k;
+    measure.font = `${titleSize}px ${SCRIPT_FONT}`;
+    const tm = measure.measureText('Merry Huddling Tree');
+    const titleAscent = tm.actualBoundingBoxAscent || titleSize * 0.8;
+    const titleDescent = tm.actualBoundingBoxDescent || titleSize * 0.35;
+    const footTop = 20 * k;
+    const footGap = 10 * k;
+    const footBottom = 24 * k;
+    const footH = footTop + titleAscent + titleDescent + footGap + subSize + footBottom;
     const H = tree.height + headH + listH + moreH + footH;
 
     const out = document.createElement('canvas');
@@ -223,13 +233,16 @@
 
     // 맨 아래 서명
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = '#fafaf9';
-    ctx.font = `${36 * k}px ${SCRIPT_FONT}`;
-    ctx.fillText('Merry Huddling Tree', W / 2, y + 32 * k);
+    ctx.font = `${titleSize}px ${SCRIPT_FONT}`;
+    const baseY = y + footTop + titleAscent;
+    ctx.fillText('Merry Huddling Tree', W / 2, baseY);
+    ctx.textBaseline = 'top';
     ctx.fillStyle = '#a9a29d';
-    ctx.font = `400 ${11 * k}px ${FONT}`;
-    ctx.fillText('by 허들링 클럽', W / 2, y + 56 * k);
+    ctx.font = `400 ${subSize}px ${FONT}`;
+    ctx.fillText('by 허들링 클럽', W / 2, baseY + titleDescent + footGap);
+    ctx.textAlign = 'left';
     return out;
   }
 

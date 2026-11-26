@@ -24,7 +24,7 @@
   max-width: 360px;
   max-height: calc(100dvh - 48px);
   padding: 0;
-  border: 1px solid var(--line-subtle);
+  border: 1px solid rgba(68, 64, 60, 0.4); /* --line-subtle(#44403c)을 40%만 보이게 */
   border-radius: 20px;
   background: var(--bg-surface);
   color: var(--text-primary);
