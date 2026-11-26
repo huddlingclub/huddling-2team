@@ -709,18 +709,50 @@
   }
 
   /* ---------- 공유 ---------- */
+  // 글자를 클립보드에 복사해요. 새 방식이 막힌 브라우저(카카오톡 같은 앱 안 브라우저 등)는 옛 방식으로 한 번 더 해 봐요.
+  async function copyText(text) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (err) {
+      // 아래 옛 방식으로 넘어가요.
+    }
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+    // 모달이 열려 있으면 바깥 글자는 선택이 안 돼서, 열린 모달 안에 잠깐 넣어요.
+    ($$('dialog[open]').pop() || document.body).appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    let ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch (err) {
+      ok = false;
+    }
+    ta.remove();
+    return ok;
+  }
+
+  // 공유 창 → 링크 복사 → 직접 복사 창 순서로 시도해서, 어떤 브라우저에서도 링크를 넘길 수 있게 해요.
   async function share() {
     const url = `${location.origin}${location.pathname}?g=${code}`;
     const title = `${group.name} 트리에 초대할게요 🎄`;
-    try {
-      if (navigator.share) await navigator.share({ title, text: '오너먼트를 달고 한마디 남겨 주세요!', url });
-      else {
-        await navigator.clipboard.writeText(url);
-        toast('초대 링크를 복사했어요.');
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text: '오너먼트를 달고 한마디 남겨 주세요!', url });
+        return;
+      } catch (err) {
+        // 직접 닫았거나(AbortError) 공유 창이 이미 떠 있으면(InvalidStateError) 그대로 둬요.
+        if (err && (err.name === 'AbortError' || err.name === 'InvalidStateError')) return;
+        // 그 밖에는 공유 창이 막힌 것이라 아래 복사로 넘어가요.
       }
-    } catch (err) {
-      if (err && err.name !== 'AbortError') toast('링크를 복사하지 못했어요.');
     }
+    if (await copyText(url)) toast('초대 링크를 복사했어요.');
+    else window.prompt('아래 링크를 길게 눌러 복사해 주세요.', url);
   }
 
   /* ---------- 이벤트 ---------- */
@@ -939,7 +971,7 @@
     });
   }
 
-  // 이미지 저장(save-image.js)이 그룹 이름과 편지를 읽어 갈 수 있게 열어 둬요.
+  // 이미지 저장(save-image.js)이 그룹 이름 · 편지 · 복사 기능을 쓸 수 있게 열어 둬요.
   window.TL = {
     get group() {
       return group;
@@ -947,6 +979,7 @@
     get letters() {
       return letters;
     },
+    copyText,
   };
 
   /* ---------- 시작 ---------- */

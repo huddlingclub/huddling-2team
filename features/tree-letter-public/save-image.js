@@ -283,18 +283,23 @@
     const file = new File([blob], fileName(), { type: 'image/png' });
     const title = `${groupName()} 트리 🎄`;
     const text = `우리 그룹이 함께 꾸민 크리스마스 트리예요 🎄\n나도 우리 그룹 트리 만들기 👉 ${homeUrl()}`;
-    try {
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title, text });
-      } else if (navigator.share) {
-        await navigator.share({ title, text }); // 이미지를 못 보내는 브라우저는 글과 링크만
-      } else {
-        await navigator.clipboard.writeText(text);
-        flash($('#saveShare'), '링크를 복사했어요');
+    if (navigator.share) {
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title, text });
+        } else {
+          await navigator.share({ title, text }); // 이미지를 못 보내는 브라우저는 글과 링크만
+        }
+        return;
+      } catch (err) {
+        // 직접 닫았거나(AbortError) 공유 창이 이미 떠 있으면(InvalidStateError) 그대로 둬요.
+        if (err && (err.name === 'AbortError' || err.name === 'InvalidStateError')) return;
+        // 그 밖에는 공유 창이 막힌 것이라 아래 복사로 넘어가요.
       }
-    } catch (err) {
-      if (err && err.name !== 'AbortError') flash($('#saveShare'), '공유하지 못했어요');
     }
+    const copied = window.TL && window.TL.copyText ? await window.TL.copyText(text) : false;
+    if (copied) flash($('#saveShare'), '링크를 복사했어요');
+    else window.prompt('아래 링크를 길게 눌러 복사해 주세요. 이미지는 저장 버튼으로 받을 수 있어요.', homeUrl());
   }
 
   // 버튼 글자를 잠깐 바꿔서 결과를 알려 줘요.
