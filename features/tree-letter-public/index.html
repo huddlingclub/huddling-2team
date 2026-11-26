@@ -31,23 +31,21 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.3/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css"
     />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pinyon+Script&display=swap" />
+    <!-- 제목 필기체: Adobe Fonts(Bickham Script Pro 3) -->
+    <link rel="stylesheet" href="https://use.typekit.net/kql5rdv.css" />
     <link rel="stylesheet" href="./style.css" />
     <link rel="stylesheet" href="./public.css" />
     <link rel="stylesheet" href="./save-image.css" />
+    <link rel="stylesheet" href="./bgm.css" />
   </head>
   <body>
     <div class="app">
       <!-- ① 메인: 링크 없이 오면 '만들기', 초대 링크로 오면 '초대' -->
       <section class="screen" data-screen="home" data-mode="create" hidden>
-        <svg class="spark spark--left" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 0v28M0 14h28M4.5 4.5l19 19M23.5 4.5l-19 19" /></svg>
-        <svg class="spark spark--right" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 0v28M0 14h28M4.5 4.5l19 19M23.5 4.5l-19 19" /></svg>
         <div class="head">
           <!-- 초대 링크로 들어왔을 때만 그룹 이름이 들어가서 보여요 -->
           <span class="chip" id="homeChip" hidden></span>
-          <h1 class="title title--script">Merry<br />Huddling Tree</h1>
+          <h1 class="title title--script"><svg class="spark spark--t1" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 0v28M0 14h28M4.5 4.5l19 19M23.5 4.5l-19 19" /></svg><svg class="spark spark--t2" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 0v28M0 14h28M4.5 4.5l19 19M23.5 4.5l-19 19" /></svg><svg class="spark spark--t3" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 0v28M0 14h28M4.5 4.5l19 19M23.5 4.5l-19 19" /></svg><svg class="spark spark--t4" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 0v28M0 14h28M4.5 4.5l19 19M23.5 4.5l-19 19" /></svg>Merry<br />Huddling Tree</h1>
           <p class="sub" id="homeSub">친구들과 함께 꾸미는 크리스마스 트리</p>
         </div>
         <div class="hero"></div>
@@ -129,9 +127,14 @@
       <!-- ④ 트리 꾸미기 -->
       <section class="screen screen--decorate" data-screen="decorate" hidden>
         <div class="bar bar--decorate">
-          <button class="icon-btn icon-btn--solid" id="shareBtn" type="button" aria-label="초대 링크 공유">
-            <i data-lucide="user-plus"></i>
-          </button>
+          <div class="bar-group">
+            <button class="icon-btn icon-btn--solid" id="decoBack" type="button" aria-label="메인으로 돌아가기">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <button class="icon-btn icon-btn--solid" id="shareBtn" type="button" aria-label="초대 링크 공유">
+              <i data-lucide="user-plus"></i>
+            </button>
+          </div>
           <span class="bar-title" data-group-title></span>
           <button class="icon-btn icon-btn--solid" id="letterBtn" type="button" aria-label="편지 열기">
             <i data-lucide="mail"></i>
@@ -197,5 +200,6 @@
     <script src="./local-db.js"></script>
     <script src="./script.js"></script>
     <script src="./save-image.js"></script>
+    <script src="./bgm.js"></script>
   </body>
 </html>

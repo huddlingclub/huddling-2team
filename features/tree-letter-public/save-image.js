@@ -7,7 +7,7 @@
   const CAPTURE_SCALE = 2; // 화면보다 2배 크게 찍어서 저장했을 때 덜 흐리게 해요.
   const LETTER_LIMIT = 20; // 이미지에 넣는 편지 수 (최신순). 나머지는 '외 N개'로 적어요.
   const FONT = "'Wanted Sans Variable', 'Wanted Sans', -apple-system, 'Apple SD Gothic Neo', sans-serif";
-  const SCRIPT_FONT = "'Pinyon Script', cursive";
+  const SCRIPT_FONT = "'bickham-script-pro-3', cursive";
 
   const $ = (sel) => document.querySelector(sel);
   const groupName = () => (window.TL && window.TL.group && window.TL.group.name) || '우리';
@@ -47,7 +47,14 @@
           <button class="icon-btn" id="saveClose" type="button" aria-label="닫기"><i data-lucide="x"></i></button>
         </div>
         <div class="save-preview" id="savePreview" aria-live="polite"></div>
-        <button class="btn btn--primary" id="saveDownload" type="button" disabled>이미지 저장</button>
+        <div class="save-actions">
+          <button class="btn btn--secondary" id="saveDownload" type="button" disabled>
+            <i data-lucide="download"></i>이미지 저장
+          </button>
+          <button class="btn btn--primary" id="saveShare" type="button" disabled>
+            <i data-lucide="share-2"></i>공유하기
+          </button>
+        </div>
       </div>`;
     document.body.appendChild(dialog);
     refreshIcons();
@@ -55,6 +62,7 @@
     saveBtn.addEventListener('click', open);
     $('#saveClose').addEventListener('click', () => dialog.close());
     $('#saveDownload').addEventListener('click', save);
+    $('#saveShare').addEventListener('click', share);
     dialog.addEventListener('click', (e) => {
       if (e.target === dialog) dialog.close(); // 바깥(어두운 부분)을 누르면 닫혀요.
     });
@@ -146,7 +154,7 @@
     await Promise.all([
       document.fonts.load(`600 ${textSize}px ${FONT}`),
       document.fonts.load(`400 ${textSize}px ${FONT}`),
-      document.fonts.load(`${28 * k}px ${SCRIPT_FONT}`),
+      document.fonts.load(`${36 * k}px ${SCRIPT_FONT}`),
     ]).catch(() => null);
 
     const measure = document.createElement('canvas').getContext('2d');
@@ -160,7 +168,7 @@
     const headH = all.length ? 56 * k : 0;
     const listH = cards.reduce((sum, c) => sum + c.h + gap, 0);
     const moreH = all.length > shown.length ? 28 * k : 0;
-    const footH = 76 * k;
+    const footH = 112 * k;
     const H = tree.height + headH + listH + moreH + footH;
 
     const out = document.createElement('canvas');
@@ -217,20 +225,24 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#fafaf9';
-    ctx.font = `${28 * k}px ${SCRIPT_FONT}`;
+    ctx.font = `${36 * k}px ${SCRIPT_FONT}`;
     ctx.fillText('Merry Huddling Tree', W / 2, y + 32 * k);
     ctx.fillStyle = '#a9a29d';
     ctx.font = `400 ${11 * k}px ${FONT}`;
     ctx.fillText('by 허들링 클럽', W / 2, y + 56 * k);
+    // 이미지만 받은 사람도 어디서 만드는지 알 수 있게 주소를 넣어요.
+    ctx.fillStyle = '#e8b554';
+    ctx.font = `600 ${12 * k}px ${FONT}`;
+    ctx.fillText(`나도 트리 만들기 · ${homeUrl().replace(/^https?:\/\//, '').replace(/\/$/, '')}`, W / 2, y + 88 * k);
     return out;
   }
 
   async function open() {
     const dialog = $('#saveDialog');
     const preview = $('#savePreview');
-    const button = $('#saveDownload');
+    const buttons = [$('#saveDownload'), $('#saveShare')];
     blob = null;
-    button.disabled = true;
+    buttons.forEach((b) => (b.disabled = true));
     preview.innerHTML = '<p class="save-status">이미지를 만드는 중이에요…</p>';
     dialog.showModal();
     try {
@@ -243,7 +255,7 @@
       img.src = URL.createObjectURL(blob);
       img.onload = () => URL.revokeObjectURL(img.src);
       preview.replaceChildren(img);
-      button.disabled = false;
+      buttons.forEach((b) => (b.disabled = false));
     } catch (err) {
       console.warn('tree-letter save image', err);
       preview.innerHTML = '<p class="save-status">이미지를 만들지 못했어요. 닫고 다시 눌러 주세요.</p>';
@@ -251,18 +263,43 @@
   }
 
   /* ---------- 저장 ---------- */
-  async function save() {
+  // 그룹 코드 없는 첫 화면 주소: 받은 사람이 '나도 만들어 볼까?' 하고 바로 시작할 수 있는 곳
+  function homeUrl() {
+    return `${location.origin}${location.pathname}`;
+  }
+
+  /* ---------- 공유: 이미지 + '나도 만들기' 링크 ---------- */
+  async function share() {
     if (!blob) return;
     const file = new File([blob], fileName(), { type: 'image/png' });
-    // 폰에서는 공유 창을 띄워 사진 앱에 저장할 수 있게 하고, 안 되면 파일로 내려받아요.
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: `${groupName()} 트리` });
-        return;
-      } catch (err) {
-        if (err && err.name === 'AbortError') return; // 사용자가 공유 창을 닫은 경우
+    const title = `${groupName()} 트리 🎄`;
+    const text = `우리 그룹이 함께 꾸민 크리스마스 트리예요 🎄\n나도 우리 그룹 트리 만들기 👉 ${homeUrl()}`;
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title, text });
+      } else if (navigator.share) {
+        await navigator.share({ title, text }); // 이미지를 못 보내는 브라우저는 글과 링크만
+      } else {
+        await navigator.clipboard.writeText(text);
+        flash($('#saveShare'), '링크를 복사했어요');
       }
+    } catch (err) {
+      if (err && err.name !== 'AbortError') flash($('#saveShare'), '공유하지 못했어요');
     }
+  }
+
+  // 버튼 글자를 잠깐 바꿔서 결과를 알려 줘요.
+  function flash(btn, msg) {
+    const html = btn.innerHTML;
+    btn.textContent = msg;
+    setTimeout(() => {
+      btn.innerHTML = html;
+    }, 1600);
+  }
+
+  /* ---------- 저장: 파일로 내려받기 ---------- */
+  function save() {
+    if (!blob) return;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

@@ -268,6 +268,8 @@
       document.startViewTransition(swap).updateCallbackDone.then(() => name === 'decorate' && updateScrollHint());
     } else swap();
     if (name === 'decorate') {
+      // 폰의 '뒤로 가기'를 눌러도 사이트를 나가지 않고 메인으로 오도록 기록을 하나 남겨요.
+      if (!(history.state && history.state.screen === 'decorate')) history.pushState({ screen: 'decorate' }, '', location.href);
       connect();
       requestAnimationFrame(updateScrollHint);
       if (PREVIEW && !store.get('tl:preview-told')) {
@@ -325,6 +327,12 @@
       start.textContent = '우리 그룹 트리 만들기';
       renderRecent();
     }
+  }
+
+  // 꾸미던 그룹의 메인 화면으로 돌아가요.
+  function goHome() {
+    renderHome(group ? 'invite' : 'create');
+    show('home');
   }
 
   /* ---------- 만들기: 트리 모양 · 배경 고르기 ---------- */
@@ -853,6 +861,17 @@
         return;
       }
       show('decorate');
+    });
+
+    // 꾸미기 → 메인으로
+    $('#decoBack').addEventListener('click', () => {
+      if (history.state && history.state.screen === 'decorate') history.back(); // 아래 popstate에서 메인으로 가요
+      else goHome();
+    });
+    window.addEventListener('popstate', () => {
+      if ($('[data-screen="decorate"]').hidden) return;
+      $$('dialog[open]').forEach((d) => d.close());
+      goHome();
     });
 
     // 꾸미기
