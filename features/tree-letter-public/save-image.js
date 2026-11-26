@@ -168,7 +168,7 @@
     const headH = all.length ? 56 * k : 0;
     const listH = cards.reduce((sum, c) => sum + c.h + gap, 0);
     const moreH = all.length > shown.length ? 28 * k : 0;
-    const footH = 112 * k;
+    const footH = 84 * k;
     const H = tree.height + headH + listH + moreH + footH;
 
     const out = document.createElement('canvas');
@@ -230,10 +230,6 @@
     ctx.fillStyle = '#a9a29d';
     ctx.font = `400 ${11 * k}px ${FONT}`;
     ctx.fillText('by 허들링 클럽', W / 2, y + 56 * k);
-    // 이미지만 받은 사람도 어디서 만드는지 알 수 있게 주소를 넣어요.
-    ctx.fillStyle = '#e8b554';
-    ctx.font = `600 ${12 * k}px ${FONT}`;
-    ctx.fillText(`나도 트리 만들기 · ${homeUrl().replace(/^https?:\/\//, '').replace(/\/$/, '')}`, W / 2, y + 88 * k);
     return out;
   }
 
