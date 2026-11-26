@@ -7,6 +7,12 @@
   padding-top: calc(56px + env(safe-area-inset-top, 0px));
 }
 
+/* 배경 그림(펭귄+트리 한 장)이 화면보다 길면 위·아래가 잘려요.
+   가운데 기준이면 위쪽이 많이 잘려 트리가 제목 쪽으로 올라오므로, 빈 바닥이 있는 아래쪽을 더 잘라요. */
+[data-screen='home'] {
+  background-position: center, 50% 25%;
+}
+
 [data-screen='home'] .chip {
   max-width: 100%;
   overflow: hidden;
@@ -38,6 +44,23 @@
 .spark--t2 { --s: 14px; top: 6px; left: calc(50% + 96px); animation-delay: 1.1s; }
 .spark--t3 { --s: 20px; top: 104px; left: calc(50% + 130px); animation-delay: 2s; }
 .spark--t4 { --s: 12px; top: 92px; left: calc(50% - 158px); animation-delay: 0.6s; }
+
+/* 브라우저 주소창 · 아래 메뉴 때문에 화면이 짧을 때: 제목을 줄이고 위로 올려 트리와 겹치지 않게 해요. */
+@media (max-height: 720px) {
+  [data-screen='home'] .head {
+    padding-top: calc(28px + env(safe-area-inset-top, 0px));
+  }
+
+  [data-screen='home'] .title--script {
+    margin-top: 6px;
+    font-size: 46px;
+  }
+
+  .spark--t1 { left: calc(50% - 110px); }
+  .spark--t2 { left: calc(50% + 78px); }
+  .spark--t3 { top: 82px; left: calc(50% + 108px); }
+  .spark--t4 { top: 72px; left: calc(50% - 132px); }
+}
 
 [data-screen='home'] .sub {
   margin-top: 10px;
