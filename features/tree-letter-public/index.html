@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#150402" />
+    <title>Merry Huddling Tree · 함께 꾸미는 크리스마스 트리</title>
+    <meta name="description" content="우리 그룹 크리스마스 트리를 만들고 링크로 초대해요. 함께 오너먼트를 달고 30자 편지를 남겨요. by 허들링 클럽" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" type="image/png" href="./img/orn-penguin-santa.png" />
+    <link rel="apple-touch-icon" href="./img/orn-penguin-santa.png" />
+
+    <!-- 링크를 공유했을 때 보이는 미리보기 -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Merry Huddling Tree" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:title" content="우리 트리에 오너먼트를 달아 주세요 🎄" />
+    <meta property="og:description" content="함께 꾸미는 크리스마스 트리. 오너먼트를 달고 한마디를 남겨요." />
+    <meta property="og:url" content="https://huddling-2team.vercel.app/features/tree-letter-public/" />
+    <meta property="og:image" content="https://huddling-2team.vercel.app/features/tree-letter-public/img/og.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Merry Huddling Tree. 펭귄 두 마리가 크리스마스 트리를 꾸미는 그림" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="우리 트리에 오너먼트를 달아 주세요 🎄" />
+    <meta name="twitter:description" content="함께 꾸미는 크리스마스 트리. 오너먼트를 달고 한마디를 남겨요." />
+    <meta name="twitter:image" content="https://huddling-2team.vercel.app/features/tree-letter-public/img/og-x.jpg" />
+    <meta name="twitter:image:alt" content="Merry Huddling Tree. 펭귄 두 마리가 크리스마스 트리를 꾸미는 그림" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.3/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css"
+    />
+    <!-- 제목 필기체: Adobe Fonts(Bickham Script Pro 3) -->
+    <link rel="stylesheet" href="https://use.typekit.net/kql5rdv.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./public.css" />
+    <link rel="stylesheet" href="./save-image.css" />
+    <link rel="stylesheet" href="./bgm.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- ① 메인: 링크 없이 오면 '만들기', 초대 링크로 오면 '초대' -->
+      <section class="screen" data-screen="home" data-mode="create" hidden>
+        <div class="head">
+          <!-- 초대 링크로 들어왔을 때만 그룹 이름이 들어가서 보여요 -->
+          <span class="chip" id="homeChip" hidden></span>
+          <h1 class="title title--script"><svg class="spark spark--t1" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 0v28M0 14h28M4.5 4.5l19 19M23.5 4.5l-19 19" /></svg><svg class="spark spark--t2" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 0v28M0 14h28M4.5 4.5l19 19M23.5 4.5l-19 19" /></svg><svg class="spark spark--t3" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 0v28M0 14h28M4.5 4.5l19 19M23.5 4.5l-19 19" /></svg><svg class="spark spark--t4" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 0v28M0 14h28M4.5 4.5l19 19M23.5 4.5l-19 19" /></svg>Merry<br />Huddling Tree</h1>
+          <p class="sub" id="homeSub">친구들과 함께 꾸미는 크리스마스 트리</p>
+        </div>
+        <div class="hero"></div>
+        <div class="foot foot--home">
+          <div class="recent" id="recent" data-only="create" hidden>
+            <span class="recent-label">내 트리</span>
+            <div class="recent-list" id="recentList"></div>
+          </div>
+          <button class="btn btn--ghost" id="startBtn" type="button">우리 그룹 트리 만들기</button>
+          <!-- 초대 링크를 받은 사람에게만 보여요 (만든 사람에게는 안 보여요) -->
+          <a class="make-own" id="makeOwn" href="./" hidden>
+            <i data-lucide="plus"></i>
+            우리 그룹 트리도 만들기
+          </a>
+        </div>
+      </section>
+
+      <!-- ② 트리 만들기 -->
+      <section class="screen" data-screen="create" hidden>
+        <div class="bar">
+          <button class="icon-btn" id="createBack" type="button" aria-label="뒤로 가기">
+            <i data-lucide="arrow-left"></i>
+          </button>
+        </div>
+        <form class="create-form" id="createForm" autocomplete="off">
+          <div class="create-body">
+            <div class="head head--left">
+              <h1 class="title">우리 그룹 트리를 만들어요</h1>
+              <p class="sub">다 만들면 링크로 친구들을 초대할 수 있어요.</p>
+            </div>
+
+            <div class="group">
+              <label class="group-label" for="nameInput">그룹 이름</label>
+              <label class="field">
+                <input id="nameInput" class="input" type="text" placeholder="예: 디자인팀, 대학 동기" enterkeyhint="next" />
+                <span class="count" id="nameCount"></span>
+              </label>
+            </div>
+
+            <fieldset class="group">
+              <legend class="group-label">트리 모양</legend>
+              <div class="choice-row choice-row--tree" id="treeChoices"></div>
+            </fieldset>
+
+            <fieldset class="group">
+              <legend class="group-label">배경</legend>
+              <div class="choice-row choice-row--bg" id="bgChoices"></div>
+            </fieldset>
+          </div>
+          <div class="foot foot--sticky">
+            <button class="btn btn--primary" id="createNext" type="submit" disabled>다음으로</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- ③ 닉네임 -->
+      <section class="screen" data-screen="nick" hidden>
+        <div class="bar">
+          <button class="icon-btn" id="nickBack" type="button" aria-label="뒤로 가기">
+            <i data-lucide="arrow-left"></i>
+          </button>
+        </div>
+        <form class="nick-form" id="nickForm" autocomplete="off">
+          <div class="head head--left">
+            <h1 class="title">닉네임을 입력해 주세요</h1>
+            <p class="sub" id="nickSub">이 이름으로 트리에 참여해요. 편지에 표시돼요.</p>
+          </div>
+          <label class="field">
+            <input id="nickInput" class="input" type="text" placeholder="닉네임" enterkeyhint="done" />
+            <span class="count" id="nickCount"></span>
+          </label>
+          <div class="spacer"></div>
+          <div class="foot">
+            <button class="btn btn--primary" id="nickNext" type="submit" disabled>다음으로</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- ④ 트리 꾸미기 -->
+      <section class="screen screen--decorate" data-screen="decorate" hidden>
+        <div class="bar bar--decorate">
+          <div class="bar-group">
+            <button class="icon-btn icon-btn--solid" id="decoBack" type="button" aria-label="메인으로 돌아가기">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <button class="icon-btn icon-btn--solid" id="shareBtn" type="button" aria-label="초대 링크 공유">
+              <i data-lucide="user-plus"></i>
+            </button>
+          </div>
+          <span class="bar-title" data-group-title></span>
+          <button class="icon-btn icon-btn--solid" id="letterBtn" type="button" aria-label="편지 열기">
+            <i data-lucide="mail"></i>
+            <span class="badge" id="letterBadge" hidden></span>
+          </button>
+        </div>
+
+        <div class="canvas" id="canvas">
+          <div class="bg-layer"></div>
+          <div class="bg-layer"></div>
+          <div class="tree-box" id="treeBox">
+            <div data-tree></div>
+            <div class="orn-layer" id="ornLayer"></div>
+          </div>
+        </div>
+
+        <div class="sheet">
+          <div class="tabs" role="tablist">
+            <button class="tab is-on" type="button" role="tab" data-tab="ornament" aria-selected="true">오너먼트</button>
+            <button class="tab" type="button" role="tab" data-tab="bg" aria-selected="false">배경</button>
+          </div>
+          <div class="items-wrap" id="itemsWrap">
+            <div class="items" id="items"></div>
+            <!-- 양옆에 더 있을 때만 보이는 화살표 -->
+            <button class="items-arrow items-arrow--prev" type="button" data-scroll="-1" aria-label="이전 오너먼트 보기">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <button class="items-arrow items-arrow--next" type="button" data-scroll="1" aria-label="다음 오너먼트 보기">
+              <i data-lucide="chevron-right"></i>
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ⑤ 편지 보기 · 남기기 (전체 모달) -->
+    <dialog class="letters" id="letterDialog" aria-labelledby="letterTitle">
+      <div class="letters-inner">
+        <div class="bar bar--letters">
+          <span class="bar-side"></span>
+          <h2 class="bar-title" id="letterTitle">편지</h2>
+          <button class="icon-btn" id="letterClose" type="button" aria-label="닫기">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="letter-list" id="letterList"></div>
+        <form class="composer" id="letterForm" autocomplete="off">
+          <div class="input-row">
+            <label class="field field--grow">
+              <input id="letterInput" class="input" type="text" placeholder="메시지 남기기" enterkeyhint="send" />
+              <span class="count" id="letterCount"></span>
+            </label>
+            <button class="btn btn--primary btn--inline" id="letterSend" type="submit" disabled>남기기</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+    <script src="./local-db.js"></script>
+    <script src="./script.js"></script>
+    <script src="./save-image.js"></script>
+    <script src="./bgm.js"></script>
+  </body>
+</html>

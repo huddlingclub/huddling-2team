@@ -1,0 +1,380 @@
+/* 공개용 버전에서 새로 생긴 화면 · 보정한 부분
+   style.css(원본에서 복사한 기본 UI) 다음에 읽어서 덮어써요. 색은 style.css의 변수를 그대로 써요. */
+
+/* ---------- ① 메인 보정 ---------- */
+/* 처음 온 사람이 '무엇을 하는 곳인지' 먼저 보이도록: 이름표 → 큰 제목 → 한 줄 설명 순서 */
+[data-screen='home'] .head {
+  padding-top: calc(56px + env(safe-area-inset-top, 0px));
+}
+
+[data-screen='home'] .chip {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+[data-screen='home'] .title--script {
+  margin-top: 10px;
+  font-size: 58px; /* Bickham은 글자가 작게 보여서 키워요 */
+  line-height: 1.05;
+  position: relative;
+  /* 살짝 빛나는 글로우 + 그림 위에서도 읽히게 아래 그림자 */
+  text-shadow: 0 0 10px rgba(255, 240, 205, 0.5), 0 0 26px rgba(232, 181, 84, 0.35), 0 2px 16px rgba(0, 0, 0, 0.45);
+}
+
+/* 제목 둘레의 반짝이는 별 4개: 크기 · 반짝이는 때를 조금씩 다르게 */
+[data-screen='home'] .title--script .spark {
+  width: var(--s);
+  height: var(--s);
+  stroke: rgba(255, 245, 220, 0.75);
+  stroke-width: 1;
+  filter: drop-shadow(0 0 4px rgba(255, 230, 170, 0.6));
+}
+
+.spark--t1 { --s: 26px; top: -14px; left: calc(50% - 132px); animation-delay: 0s; }
+.spark--t2 { --s: 14px; top: 6px; left: calc(50% + 96px); animation-delay: 1.1s; }
+.spark--t3 { --s: 20px; top: 104px; left: calc(50% + 130px); animation-delay: 2s; }
+.spark--t4 { --s: 12px; top: 92px; left: calc(50% - 158px); animation-delay: 0.6s; }
+
+[data-screen='home'] .sub {
+  margin-top: 10px;
+  font-size: var(--fs-body);
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+  word-break: keep-all; /* 한글이 단어 중간에서 줄바꿈되지 않게 */
+  white-space: pre-line; /* 문구 안의 줄바꿈(\n)을 그대로 보여줘요 */
+}
+
+
+.foot--home {
+  position: relative;
+  isolation: isolate; /* 아래 어두운 배경이 이 영역 안에서만 깔리게 */
+  display: grid;
+  gap: 14px;
+}
+
+/* 아래쪽 글씨가 그림에 묻히지 않게 어두운 레드를 살짝 깔아요. */
+.foot--home::before {
+  content: '';
+  position: absolute;
+  inset: -56px 0 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(41, 15, 15, 0) 0%, rgba(41, 15, 15, 0.6) 45%, rgba(41, 15, 15, 0.82) 100%);
+  pointer-events: none;
+}
+
+.recent {
+  display: grid;
+  gap: 8px;
+}
+
+.recent-label {
+  color: var(--text-primary);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-strong);
+}
+
+.recent-list {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.recent-list::-webkit-scrollbar {
+  display: none;
+}
+
+.recent-chip {
+  flex: none;
+  max-width: 160px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-strong);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- ② 트리 만들기 ---------- */
+[data-screen='create'] {
+  background: #290f0f;
+}
+
+.create-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.create-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+.group {
+  margin: 24px var(--gutter) 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.group-label {
+  display: block;
+  margin: 0 0 10px;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-strong);
+}
+
+.choice-row {
+  display: grid;
+  gap: 8px;
+}
+
+.choice-row--tree {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.choice-row--bg {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.choice {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  border-radius: 14px;
+  background: var(--bg-inset);
+  box-shadow: inset 0 0 0 1.5px transparent;
+  cursor: pointer;
+  overflow: hidden;
+  transition: box-shadow 0.15s ease, transform 0.12s ease;
+}
+
+.choice:active {
+  transform: scale(0.97);
+}
+
+/* 동그라미 선택 버튼은 숨기고, 칸 전체를 눌러서 고르게 해요 (키보드로도 고를 수 있어요). */
+.choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.choice:has(input:checked) {
+  box-shadow: inset 0 0 0 2px var(--action-primary);
+}
+
+.choice:has(input:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* 트리: 칸 안에서 사방으로 여백을 둬서 트리가 테두리에 붙지 않게 */
+.choice--tree {
+  aspect-ratio: 3 / 4;
+  padding: 16px 12px;
+}
+
+.choice--tree img {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+/* 배경: 칸 배경 · 테두리 없이, 선택하면 이미지에만 테두리 */
+.choice--bg {
+  gap: 8px;
+  background: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.choice--bg,
+.choice--bg:has(input:checked) {
+  box-shadow: none;
+}
+
+.choice--bg img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: 0 0 0 2px transparent;
+  transition: box-shadow 0.15s ease;
+}
+
+.choice--bg:has(input:checked) img {
+  box-shadow: 0 0 0 2px var(--action-primary);
+}
+
+.choice--bg span {
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+}
+
+.choice:has(input:checked) span {
+  color: var(--text-primary);
+  font-weight: var(--fw-strong);
+}
+
+.foot--sticky {
+  flex: none;
+  background: #290f0f;
+  box-shadow: 0 -12px 16px #290f0f;
+}
+
+/* ---------- ③ 닉네임: 만들기 화면과 같은 단색 배경 ---------- */
+[data-screen='nick'] {
+  background: #290f0f;
+}
+
+/* ---------- ④ 꾸미기 ---------- */
+/* 상단 버튼 · 제목: 뒤 배경이 살짝 비치는 유리 느낌 */
+.bar--decorate .icon-btn--solid,
+.bar--decorate .icon-btn--solid:active,
+.bar--decorate .bar-title {
+  background: rgba(32, 12, 12, 0.38);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 4px 14px rgba(0, 0, 0, 0.25);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+}
+
+/* 그룹 이름이 길어도 양쪽 버튼을 덮지 않게 줄여요. */
+.bar--decorate .bar-title {
+  max-width: calc(100% - 228px); /* 양쪽에 버튼이 두 개씩 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 다른 사람이 단 오너먼트는 옮길 수 없다는 걸 손가락 모양으로도 알려요. */
+.orn:not(.is-mine) {
+  cursor: default;
+}
+
+/* 오너먼트 목록: 양옆에 더 있으면 살짝 어둡게 + 화살표 */
+.items-wrap::before,
+.items-wrap::after {
+  width: 72px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* 딤 색은 바텀시트 배경색(--bg-surface #290f0f)과 같게 해서 시트에 자연스럽게 녹아들어요. */
+.items-wrap::after {
+  background: linear-gradient(90deg, rgba(41, 15, 15, 0) 0%, rgba(41, 15, 15, 0.85) 60%, #290f0f 100%);
+}
+
+.items-wrap::before {
+  background: linear-gradient(270deg, rgba(41, 15, 15, 0) 0%, rgba(41, 15, 15, 0.85) 60%, #290f0f 100%);
+}
+
+.items-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-top: -16px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 2px 8px rgba(0, 0, 0, 0.45);
+  transition: opacity 0.2s ease, transform 0.12s ease;
+}
+
+.items-arrow:active {
+  transform: scale(0.92);
+}
+
+.items-arrow svg.lucide {
+  width: 18px;
+  height: 18px;
+}
+
+.items-arrow--prev {
+  left: 10px;
+}
+
+.items-arrow--next {
+  right: 10px;
+}
+
+/* 끝까지 넘기면 그쪽 화살표는 사라져요. */
+.items-wrap.is-start .items-arrow--prev,
+.items-wrap.is-end .items-arrow--next {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.make-own {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 2px;
+  padding: 6px;
+  color: var(--text-tertiary);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-strong);
+  text-decoration: none;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* 메인 아래 링크는 흐린 회색이면 눌리지 않는 것처럼 보여서 흰색으로 */
+.foot--home .make-own {
+  color: var(--text-primary);
+}
+
+.make-own svg.lucide {
+  width: 14px;
+  height: 14px;
+}
+
+.make-own:active {
+  color: var(--text-primary);
+}
+
+/* ---------- ⑤ 편지: 내 편지에만 '지우기' ---------- */
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card.is-mine {
+  border-color: rgba(232, 181, 84, 0.45);
+}
+
+.card-del {
+  padding: 2px 4px;
+  color: var(--text-tertiary);
+  font-size: var(--fs-micro);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.card-del:active {
+  color: var(--text-primary);
+}
