@@ -132,6 +132,41 @@
   text-align: center;
 }
 
+.save-kakao {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.save-kakao[hidden] {
+  display: none;
+}
+
+/* 안내가 보이면 그만큼 미리보기를 줄여서 창 밖으로 넘치지 않게 해요. */
+.save-inner:has(.save-kakao:not([hidden])) .save-img {
+  max-height: calc(100dvh - 340px);
+}
+
+.save-kakao p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.save-kakao .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.save-kakao svg.lucide {
+  width: 18px;
+  height: 18px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .save-dialog[open],
   .save-dialog[open]::backdrop {

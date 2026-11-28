@@ -18,6 +18,13 @@
 
   let blob = null; // 마지막으로 만든 이미지
 
+  // 카카오톡 안의 브라우저는 '파일 내려받기(a download)'를 제대로 못 해서
+  // 저장하면 '지원되지 않는 파일 형식'이 떠요. 그래서 카카오톡에서는 따로 안내해요.
+  // 내 컴퓨터(localhost)에서는 주소 끝에 &kakao 를 붙이면 카카오톡처럼 확인해 볼 수 있어요.
+  const isKakao =
+    /KAKAOTALK/i.test(navigator.userAgent) ||
+    (location.hostname === 'localhost' && new URLSearchParams(location.search).has('kakao'));
+
   /* ---------- 버튼 · 모달 만들기 ---------- */
   function build() {
     const bar = $('.bar--decorate');
@@ -47,6 +54,12 @@
           <button class="icon-btn" id="saveClose" type="button" aria-label="닫기"><i data-lucide="x"></i></button>
         </div>
         <div class="save-preview" id="savePreview" aria-live="polite"></div>
+        <div class="save-kakao" id="saveKakao" hidden>
+          <p>카카오톡에서는 바로 저장이 안 돼요.<br>위 이미지를 <b>길게 눌러</b> 저장하거나,<br>다른 브라우저로 열어 주세요.</p>
+          <button class="btn btn--secondary" id="saveExternal" type="button">
+            <i data-lucide="external-link"></i>다른 브라우저로 열기
+          </button>
+        </div>
         <div class="save-actions">
           <button class="btn btn--secondary" id="saveDownload" type="button" disabled>
             <i data-lucide="download"></i>이미지 저장
@@ -63,6 +76,7 @@
     $('#saveClose').addEventListener('click', () => dialog.close());
     $('#saveDownload').addEventListener('click', save);
     $('#saveShare').addEventListener('click', share);
+    $('#saveExternal').addEventListener('click', openExternal);
     dialog.addEventListener('click', (e) => {
       if (e.target === dialog) dialog.close(); // 바깥(어두운 부분)을 누르면 닫혀요.
     });
@@ -251,6 +265,7 @@
     const preview = $('#savePreview');
     const buttons = [$('#saveDownload'), $('#saveShare')];
     blob = null;
+    $('#saveKakao').hidden = true;
     buttons.forEach((b) => (b.disabled = true));
     preview.innerHTML = '<p class="save-status">이미지를 만드는 중이에요…</p>';
     dialog.showModal();
@@ -261,8 +276,13 @@
       const img = document.createElement('img');
       img.className = 'save-img';
       img.alt = `${groupName()} 트리와 편지`;
-      img.src = URL.createObjectURL(blob);
-      img.onload = () => URL.revokeObjectURL(img.src);
+      if (isKakao) {
+        // 길게 눌러 저장할 수 있도록 이미지 자체를 주소(data URL)로 넣어 둬요.
+        img.src = canvas.toDataURL('image/png');
+      } else {
+        img.src = URL.createObjectURL(blob);
+        img.onload = () => URL.revokeObjectURL(img.src);
+      }
       preview.replaceChildren(img);
       buttons.forEach((b) => (b.disabled = false));
     } catch (err) {
@@ -314,6 +334,10 @@
   /* ---------- 저장: 파일로 내려받기 ---------- */
   function save() {
     if (!blob) return;
+    if (isKakao) {
+      $('#saveKakao').hidden = false; // 카카오톡에서는 내려받기 대신 안내를 보여 줘요.
+      return;
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -322,6 +346,11 @@
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // 카카오톡 밖의 기본 브라우저(크롬·사파리 등)로 지금 화면을 다시 열어요.
+  function openExternal() {
+    location.href = `kakaotalk://web/openExternal?url=${encodeURIComponent(location.href)}`;
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);
