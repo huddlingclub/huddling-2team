@@ -83,6 +83,14 @@
   const isCode = (v) => typeof v === 'string' && /^[a-z0-9]{6,16}$/.test(v);
   const clamp = (v) => Math.min(96, Math.max(4, Math.round(v * 10) / 10));
   const chars = (s) => [...s];
+  // 사용 데이터 기록 (analytics.js). 그 파일이 없어도 화면은 그대로 동작해요.
+  const track = (name, props) => {
+    try {
+      if (window.tlTrack) window.tlTrack(name, props);
+    } catch {
+      /* 기록이 실패해도 화면에는 영향 없게 */
+    }
+  };
 
   let toastTimer;
   function toast(msg) {
@@ -247,6 +255,7 @@
       return false;
     }
     code = row.team;
+    track('tree_created', { tree: row.tree, bg: row.bg, name_length: chars(row.name).length });
     applyGroup(row);
     history.replaceState(null, '', `?g=${code}`);
     return true;
@@ -259,6 +268,7 @@
   /* ---------- 화면 전환 ---------- */
   // 화면이 툭 바뀌지 않도록 부드럽게 겹쳐서 넘겨요 (지원하지 않는 브라우저는 CSS 등장 효과만 써요).
   function show(name) {
+    track('screen_viewed', { screen: name, role: group ? (isMine(group) ? 'owner' : 'guest') : 'new' });
     const swap = () =>
       $$('[data-screen]').forEach((el) => {
         el.hidden = el.dataset.screen !== name;
@@ -306,6 +316,7 @@
 
   /* ---------- 메인 ---------- */
   function renderHome(mode) {
+    track('home_viewed', { mode, is_owner: Boolean(group && isMine(group)), recent_trees: recentTrees().length });
     const home = $('[data-screen="home"]');
     home.dataset.mode = mode;
     $$('[data-only]').forEach((el) => (el.hidden = el.dataset.only !== mode));
@@ -532,6 +543,8 @@
     if (error) {
       dropOrnament(o.id);
       toast('달지 못했어요. 다시 시도해 주세요.');
+    } else {
+      track('ornament_added', { type, tree_ornament_count: ornaments.size });
     }
   }
 
@@ -691,6 +704,7 @@
       addLetter(saved || { ...row, created_at: new Date().toISOString() });
       $('#letterList').scrollTop = 0;
       toast('편지를 남겼어요.');
+      track('letter_sent', { length: chars(text).length, tree_letter_count: letters.length });
     }
     updateLetter();
   }
@@ -744,15 +758,24 @@
     if (navigator.share) {
       try {
         await navigator.share({ title, text: '오너먼트를 달고 한마디 남겨 주세요!', url });
+        track('invite_shared', { method: 'share' });
         return;
       } catch (err) {
         // 직접 닫았거나(AbortError) 공유 창이 이미 떠 있으면(InvalidStateError) 그대로 둬요.
-        if (err && (err.name === 'AbortError' || err.name === 'InvalidStateError')) return;
+        if (err && (err.name === 'AbortError' || err.name === 'InvalidStateError')) {
+          track('invite_shared', { method: 'cancel' });
+          return;
+        }
         // 그 밖에는 공유 창이 막힌 것이라 아래 복사로 넘어가요.
       }
     }
-    if (await copyText(url)) toast('초대 링크를 복사했어요.');
-    else window.prompt('아래 링크를 길게 눌러 복사해 주세요.', url);
+    if (await copyText(url)) {
+      toast('초대 링크를 복사했어요.');
+      track('invite_shared', { method: 'copy' });
+    } else {
+      window.prompt('아래 링크를 길게 눌러 복사해 주세요.', url);
+      track('invite_shared', { method: 'prompt' });
+    }
   }
 
   /* ---------- 이벤트 ---------- */
@@ -851,6 +874,7 @@
   function bind() {
     // 메인: 초대받았으면 꾸미러, 아니면 만들기로
     $('#startBtn').addEventListener('click', () => {
+      track('start_clicked', { mode: $('[data-screen="home"]').dataset.mode });
       if (group) {
         creating = false;
         show(nick ? 'decorate' : 'nick');
@@ -913,7 +937,10 @@
       const orn = e.target.closest('[data-orn]');
       const bgBtn = e.target.closest('[data-bg]');
       if (orn) addOrnament(orn.dataset.orn);
-      else if (bgBtn) setBackground(bgBtn.dataset.bg);
+      else if (bgBtn) {
+        track('background_changed', { bg: bgBtn.dataset.bg });
+        setBackground(bgBtn.dataset.bg);
+      }
     });
 
     $$('.tab').forEach((t) =>
@@ -944,6 +971,7 @@
     // 편지
     const dialog = $('#letterDialog');
     $('#letterBtn').addEventListener('click', () => {
+      track('letters_opened', { tree_letter_count: letters.length });
       updateLetter();
       dialog.showModal();
       renderLetters();
